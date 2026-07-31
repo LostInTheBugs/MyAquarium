@@ -1,0 +1,3 @@
+Place GLTF/GLB fish models here.
+Named after their element ID (e.g., neon-tetra.glb, clownfish.glb).
+See src/data/fish-models.ts for the full mapping.

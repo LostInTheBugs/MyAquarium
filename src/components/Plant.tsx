@@ -12,68 +12,77 @@ interface PlantProps {
 
 export function Plant({ modelType, position, scale, isSelected, onSelect }: PlantProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const leafRefs = useRef<THREE.Mesh[]>([]);
+  const stemRefs = useRef<THREE.Mesh[]>([]);
 
-  const color = useMemo(() => {
+  const config = useMemo(() => {
     switch (modelType) {
-      case 'plant-tall': return '#2d8a4e';
-      case 'plant-broad': return '#1a6b2e';
-      case 'plant-fern': return '#3a9a40';
-      case 'plant-moss': return '#4a8a30';
-      case 'plant-red': return '#aa3333';
-      case 'plant-grass': return '#5aaa40';
-      default: return '#3a8a30';
+      case 'plant-tall': return { color: '#2d8a4e', stems: 4, leafW: 0.025, leafH: 0.3, leafCount: 8 };
+      case 'plant-broad': return { color: '#1a6b2e', stems: 2, leafW: 0.06, leafH: 0.35, leafCount: 5 };
+      case 'plant-fern': return { color: '#3a9a40', stems: 3, leafW: 0.02, leafH: 0.25, leafCount: 10 };
+      case 'plant-moss': return { color: '#4a8a30', stems: 1, leafW: 0.015, leafH: 0.12, leafCount: 16 };
+      case 'plant-red': return { color: '#aa3333', stems: 3, leafW: 0.03, leafH: 0.28, leafCount: 7 };
+      case 'plant-grass': return { color: '#5aaa40', stems: 6, leafW: 0.012, leafH: 0.2, leafCount: 12 };
+      default: return { color: '#3a8a30', stems: 3, leafW: 0.025, leafH: 0.25, leafCount: 8 };
     }
   }, [modelType]);
 
-  const numLeaves = modelType === 'plant-grass' ? 8 : modelType === 'plant-moss' ? 12 : modelType === 'plant-broad' ? 5 : 6;
-
-  const leafData = useMemo(() => {
-    return Array.from({ length: numLeaves }, (_, i) => ({
-      angle: (i / numLeaves) * Math.PI * 2 + Math.random() * 0.5,
-      tilt: 0.2 + Math.random() * 0.5,
-      height: 0.3 + Math.random() * 0.7,
-      width: modelType === 'plant-broad' ? 0.08 + Math.random() * 0.06 : 0.02 + Math.random() * 0.03,
+  const stems = useMemo(() => {
+    return Array.from({ length: config.stems }, (_, i) => ({
+      angle: (i / config.stems) * Math.PI * 2 + Math.random() * 0.4,
+      tilt: 0.1 + Math.random() * 0.3,
+      height: 0.25 + Math.random() * 0.5,
+      thickness: 0.015 + Math.random() * 0.02,
       phase: Math.random() * Math.PI * 2,
     }));
-  }, [numLeaves, modelType]);
+  }, [config.stems]);
 
   useFrame(() => {
     if (!groupRef.current) return;
-    const t = Date.now() * 0.002;
-    leafRefs.current.forEach((leaf, i) => {
-      if (!leaf) return;
-      const sway = Math.sin(t * 1.5 + leafData[i].phase) * 0.1;
-      leaf.rotation.z = leafData[i].tilt + sway;
-      leaf.rotation.x = Math.cos(t * 1.2 + leafData[i].phase) * 0.08;
+    const t = Date.now() * 0.0015;
+    stemRefs.current.forEach((stem, i) => {
+      if (!stem || !stems[i]) return;
+      const sway = Math.sin(t * 1.2 + stems[i].phase) * 0.08;
+      stem.rotation.z = stems[i].tilt + sway;
+      stem.rotation.x = Math.cos(t * 0.9 + stems[i].phase) * 0.06;
     });
   });
 
   return (
     <group ref={groupRef} position={position} scale={scale} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-      {/* Stem */}
-      <mesh position={[0, 0.2, 0]}>
-        <cylinderGeometry args={[0.02, 0.03, 0.4, 8]} />
-        <meshStandardMaterial color="#4a6a30" roughness={0.8} />
-      </mesh>
-
-      {/* Leaves */}
-      {leafData.map((leaf, i) => (
-        <mesh
-          key={i}
-          ref={(el) => { leafRefs.current[i] = el!; }}
-          position={[0, 0.1 + leaf.height * 0.5, 0]}
-          rotation={[0, leaf.angle, leaf.tilt]}
-        >
-          <planeGeometry args={[leaf.width, leaf.height]} />
-          <meshStandardMaterial
-            color={color}
-            roughness={0.6}
-            side={THREE.DoubleSide}
-            transparent
-            opacity={0.9}
-          />
-        </mesh>
+      {stems.map((stem, i) => (
+        <group key={i}>
+          {/* Stem */}
+          <mesh
+            ref={(el) => { stemRefs.current[i] = el!; }}
+            position={[
+              Math.sin(stem.angle) * 0.03,
+              stem.height * 0.3,
+              Math.cos(stem.angle) * 0.03,
+            ]}
+          >
+            <cylinderGeometry args={[stem.thickness * 0.7, stem.thickness, stem.height, 6]} />
+            <meshStandardMaterial color="#3a5a28" roughness={0.7} />
+          </mesh>
+          {/* Leaves along stem */}
+          {Array.from({ length: 4 }, (_, li) => {
+            const leafY = 0.1 + li * (stem.height / 5);
+            const leafAngle = li * 1.5 + stem.phase;
+            return (
+              <mesh
+                key={`leaf-${li}`}
+                position={[
+                  Math.sin(stem.angle) * 0.03 + Math.cos(leafAngle) * 0.04,
+                  leafY,
+                  Math.cos(stem.angle) * 0.03 + Math.sin(leafAngle) * 0.04,
+                ]}
+                rotation={[0, leafAngle, 0.3]}
+              >
+                <planeGeometry args={[config.leafW, config.leafH * 0.3]} />
+                <meshStandardMaterial color={config.color} roughness={0.5} side={THREE.DoubleSide} transparent opacity={0.85} />
+              </mesh>
+            );
+          })}
+        </group>
       ))}
 
       {isSelected && (
