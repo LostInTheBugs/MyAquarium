@@ -34,7 +34,7 @@ function BubbleMesh({ pos, speed, bSize, quality }: { pos: [number, number, numb
         metalness={0}
         transparent
         opacity={0.5}
-        envMapIntensity={highQ ? 0.5 : 0.2}
+        envMapIntensity={highQ ? 0.15 : 0.05}
         clearcoat={highQ ? 0.2 : 0}
       />
     </mesh>

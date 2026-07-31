@@ -63,7 +63,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={0.92}
           thickness={glassThickness}
           ior={1.45}
-          envMapIntensity={0.6}
+          envMapIntensity={0.15}
           clearcoat={0.3}
           clearcoatRoughness={0.05}
           specularIntensity={1}
@@ -78,7 +78,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
         roughness={0.08}
         transparent
         opacity={0.18}
-        envMapIntensity={0.5}
+        envMapIntensity={0.1}
         clearcoat={0.3}
       />
     );
@@ -106,7 +106,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={highQuality ? 0.88 : undefined}
           thickness={glassThickness}
           ior={highQuality ? 1.45 : undefined}
-          envMapIntensity={0.4}
+          envMapIntensity={0.15}
           transparent={!highQuality}
           opacity={highQuality ? undefined : 0.22}
         />
@@ -128,7 +128,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={highQuality ? 0.85 : undefined}
           thickness={glassThickness}
           ior={highQuality ? 1.45 : undefined}
-          envMapIntensity={0.3}
+          envMapIntensity={0.1}
           transparent={!highQuality}
           opacity={highQuality ? undefined : 0.25}
         />
@@ -179,7 +179,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           metalness={0.08}
           transparent
           opacity={0.28}
-          envMapIntensity={1}
+          envMapIntensity={0.3}
           clearcoat={0.5}
           clearcoatRoughness={0.02}
           side={THREE.DoubleSide}

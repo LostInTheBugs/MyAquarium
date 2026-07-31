@@ -1,6 +1,6 @@
 import { useRef, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAquariumStore } from '../store';
 import { tankDimensions } from '../types';
@@ -113,8 +113,7 @@ function SceneContent() {
         </>
       )}
 
-      <Environment preset="sunset" />
-
+      {/* LED ramp on top */}
       <LEDRamp size={config.size} lightOn={lightOn} intensity={lightIntensity} />
       <GlassTank size={config.size} waterType={config.waterType} graphicsQuality={graphicsQuality} />
       <SandFloor size={config.size} waterType={config.waterType} substrateType={substrateEl?.elementId} graphicsQuality={graphicsQuality} />
