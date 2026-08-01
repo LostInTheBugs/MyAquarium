@@ -1,6 +1,6 @@
 import { useRef, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAquariumStore } from '../store';
 import { tankDimensions } from '../types';
@@ -115,6 +115,47 @@ function SceneContent() {
 
       {/* LED ramp on top */}
       <LEDRamp size={config.size} lightOn={lightOn} intensity={lightIntensity} />
+
+      {/* Controlled environment map for glass transmission/reflections — no outdoor imagery */}
+      <Environment background={false} resolution={256}>
+        {/* Overhead: mimics LED ramp, strong warm white */}
+        <Lightformer
+          position={[0, dims.height / 2 + 0.4, 0]}
+          scale={[dims.width * 0.9, dims.depth * 0.6, 1]}
+          intensity={4}
+          color="#fff5e8"
+          form="rect"
+          rotation-x={Math.PI / 2}
+        />
+        {/* Left side: cool dim vertical, gives glass its edge reading */}
+        <Lightformer
+          position={[-dims.width / 2 - 0.4, 0, 0]}
+          scale={[dims.depth * 0.55, dims.height * 0.65, 1]}
+          intensity={0.6}
+          color="#8899bb"
+          form="rect"
+          rotation-y={Math.PI / 2}
+        />
+        {/* Right side: cool dim vertical, symmetric */}
+        <Lightformer
+          position={[dims.width / 2 + 0.4, 0, 0]}
+          scale={[dims.depth * 0.55, dims.height * 0.65, 1]}
+          intensity={0.6}
+          color="#8899bb"
+          form="rect"
+          rotation-y={-Math.PI / 2}
+        />
+        {/* Below: dark, prevents uniformly bright glass */}
+        <Lightformer
+          position={[0, -dims.height / 2 - 0.4, 0]}
+          scale={[dims.width * 0.75, dims.depth * 0.5, 1]}
+          intensity={0.12}
+          color="#111122"
+          form="rect"
+          rotation-x={-Math.PI / 2}
+        />
+      </Environment>
+
       <GlassTank size={config.size} waterType={config.waterType} graphicsQuality={graphicsQuality} />
       <SandFloor size={config.size} waterType={config.waterType} substrateType={substrateEl?.elementId} graphicsQuality={graphicsQuality} />
 

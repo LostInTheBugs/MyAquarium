@@ -63,7 +63,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={0.92}
           thickness={glassThickness}
           ior={1.45}
-          envMapIntensity={0.15}
+          envMapIntensity={0.6}
           clearcoat={0.3}
           clearcoatRoughness={0.05}
           specularIntensity={1}
@@ -78,7 +78,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
         roughness={0.08}
         transparent
         opacity={0.18}
-        envMapIntensity={0.1}
+        envMapIntensity={0.5}
         clearcoat={0.3}
       />
     );
@@ -94,7 +94,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
     <group>
       {/* === GLASS PANELS === */}
       {/* Front */}
-      <mesh position={[0, 0, d / 2 + glassThickness / 2]} geometry={panelGeom.frontBack} castShadow>
+      <mesh position={[0, 0, d / 2 + glassThickness / 2]} geometry={panelGeom.frontBack}>
         {glassMaterial}
       </mesh>
       {/* Back */}
@@ -106,17 +106,17 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={highQuality ? 0.88 : undefined}
           thickness={glassThickness}
           ior={highQuality ? 1.45 : undefined}
-          envMapIntensity={0.15}
+          envMapIntensity={0.4}
           transparent={!highQuality}
           opacity={highQuality ? undefined : 0.22}
         />
       </mesh>
       {/* Left */}
-      <mesh position={[-w / 2 - glassThickness / 2, 0, 0]} geometry={panelGeom.side} castShadow>
+      <mesh position={[-w / 2 - glassThickness / 2, 0, 0]} geometry={panelGeom.side}>
         {glassMaterial}
       </mesh>
       {/* Right */}
-      <mesh position={[w / 2 + glassThickness / 2, 0, 0]} geometry={panelGeom.side} castShadow>
+      <mesh position={[w / 2 + glassThickness / 2, 0, 0]} geometry={panelGeom.side}>
         {glassMaterial}
       </mesh>
       {/* Bottom */}
@@ -128,7 +128,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={highQuality ? 0.85 : undefined}
           thickness={glassThickness}
           ior={highQuality ? 1.45 : undefined}
-          envMapIntensity={0.1}
+          envMapIntensity={0.3}
           transparent={!highQuality}
           opacity={highQuality ? undefined : 0.25}
         />
