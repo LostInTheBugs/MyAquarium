@@ -69,10 +69,20 @@ function SceneContent() {
 
   const dims = tankDimensions(config.size);
 
-  // Water depth fog: replaces the old flat water-volume overlay.
-  // Density calibrated so the back of the tank is visibly more washed out than the front.
-  const fogColor = config.waterType === 'marine' ? '#1a4060' : '#2a4a38';
-  const fogDensity = 0.5 / dims.depth;
+  // Water depth fog — linear attenuation recalibrated per frame to camera distance.
+  // Ensures fog only acts across the tank depth, not the camera-to-tank distance.
+  const fogColor = config.waterType === 'marine' ? '#4a6a7a' : '#4a6a5a';
+
+  // Recalibrate fog near/far every frame based on actual camera distance to tank centre.
+  // This keeps attenuation strictly across the tank depth regardless of zoom/orbit.
+  useFrame(({ scene, camera }) => {
+    if (scene.fog && scene.fog instanceof THREE.Fog) {
+      const d = camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
+      const halfDepth = dims.depth / 2;
+      scene.fog.near = Math.max(0.5, d - halfDepth);
+      scene.fog.far = d + halfDepth;
+    }
+  });
 
   const substrateEl = placedElements.find(pe => {
     const e = config ? getElementById(config.waterType, pe.elementId) : undefined;
@@ -90,8 +100,8 @@ function SceneContent() {
 
   return (
     <>
-      {/* Water depth fog — replaces the old flat water-volume overlay */}
-      <fogExp2 attach="fog" args={[fogColor, fogDensity]} />
+      {/* Water depth fog — linear, recalculated per frame based on camera distance */}
+      <fog attach="fog" args={[fogColor, 5, 15]} />
 
       {/* Ambient */}
       <ambientLight intensity={lightOn ? 0.2 : 0.03} color={config.waterType === 'marine' ? '#5577aa' : '#669966'} />
