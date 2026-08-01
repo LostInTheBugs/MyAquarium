@@ -24,7 +24,8 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
 
   const waterColor = waterType === 'marine' ? '#0a3f5c' : '#1a4a35';
   const frameColor = waterType === 'marine' ? '#151f28' : '#151f18';
-  const glassTint = waterType === 'marine' ? '#b8ddf0' : '#c8eed8';
+  const glassTint = waterType === 'marine' ? '#eaf6fb' : '#eef8f2';
+  const attenuationColor = waterType === 'marine' ? '#b8ddf0' : '#c8eed8';
 
   const surfaceGeom = useMemo(() => {
     const geom = new THREE.PlaneGeometry(w - 0.2, d - 0.2, 40, 40);
@@ -63,6 +64,8 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={0.92}
           thickness={glassThickness}
           ior={1.45}
+          attenuationColor={attenuationColor}
+          attenuationDistance={0.7}
           envMapIntensity={0.6}
           clearcoat={0.3}
           clearcoatRoughness={0.05}
@@ -82,7 +85,7 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
         clearcoat={0.3}
       />
     );
-  }, [highQuality, glassTint, glassThickness]);
+  }, [highQuality, glassTint, glassThickness, attenuationColor]);
 
   const panelGeom = useMemo(() => ({
     frontBack: new THREE.BoxGeometry(w + glassThickness * 2, h, glassThickness),
@@ -106,6 +109,8 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={highQuality ? 0.88 : undefined}
           thickness={glassThickness}
           ior={highQuality ? 1.45 : undefined}
+          attenuationColor={highQuality ? attenuationColor : undefined}
+          attenuationDistance={highQuality ? 0.7 : undefined}
           envMapIntensity={0.4}
           transparent={!highQuality}
           opacity={highQuality ? undefined : 0.22}
@@ -128,6 +133,8 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
           transmission={highQuality ? 0.85 : undefined}
           thickness={glassThickness}
           ior={highQuality ? 1.45 : undefined}
+          attenuationColor={highQuality ? attenuationColor : undefined}
+          attenuationDistance={highQuality ? 0.7 : undefined}
           envMapIntensity={0.3}
           transparent={!highQuality}
           opacity={highQuality ? undefined : 0.25}
