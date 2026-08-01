@@ -1,15 +1,43 @@
-# 🐠 Aquarium 3D Interactif
+# 🐠 MyAquarium — Aquarium 3D Interactif
 
-Application web immersive pour créer et personnaliser un aquarium 3D réaliste.
+Application web immersive de création et personnalisation d'un aquarium 3D réaliste dans le navigateur. Choisissez eau douce ou eau de mer, peuplez votre bac de poissons, plantes et décorations, puis interagissez en temps réel avec la scène Three.js.
+
+Version courante : **2026.08.001** — [Voir les releases](https://github.com/LostInTheBugs/MyAquarium/releases)
 
 ## 🚀 Installation
 
 ```bash
+git clone git@github.com:LostInTheBugs/MyAquarium.git
+cd MyAquarium
 npm install
 npm run dev
 ```
 
-L'application sera accessible sur `http://localhost:5173`.
+L'application sera accessible sur `http://localhost:5173` (dev server Vite).
+
+## 🐳 Déploiement Docker
+
+```bash
+cp .env.example .env        # PORT=8000 par défaut
+docker compose up -d
+```
+
+L'image utilise `nginx:alpine` pour servir le build statique. Le port d'écoute interne de nginx est piloté par la variable d'environnement `PORT` (défaut **8000**). Le `docker-compose.yml` inclus s'intègre avec Traefik comme reverse proxy.
+
+Build manuel sans compose :
+
+```bash
+docker build -t myaquarium .
+docker run -d -p 8000:8000 -e PORT=8000 myaquarium
+```
+
+## ⚙️ Configuration
+
+| Variable | Défaut | Description |
+|---|---|---|
+| `PORT` | `8000` | Port d'écoute interne du conteneur nginx. Surchargeable dans `.env` ou `docker-compose.yml`. |
+
+Le projet ne comporte pas d'autre configuration serveur. Le reverse proxy (Traefik) gère le HTTPS et le routage externe sur les ports 80/443.
 
 ## 🏗️ Architecture
 
