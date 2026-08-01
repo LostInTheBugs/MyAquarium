@@ -68,6 +68,12 @@ function SceneContent() {
   if (!config) return null;
 
   const dims = tankDimensions(config.size);
+
+  // Water depth fog: replaces the old flat water-volume overlay.
+  // Density calibrated so the back of the tank is visibly more washed out than the front.
+  const fogColor = config.waterType === 'marine' ? '#1a4060' : '#2a4a38';
+  const fogDensity = 0.5 / dims.depth;
+
   const substrateEl = placedElements.find(pe => {
     const e = config ? getElementById(config.waterType, pe.elementId) : undefined;
     return e?.category === 'substrate';
@@ -84,6 +90,9 @@ function SceneContent() {
 
   return (
     <>
+      {/* Water depth fog — replaces the old flat water-volume overlay */}
+      <fogExp2 attach="fog" args={[fogColor, fogDensity]} />
+
       {/* Ambient */}
       <ambientLight intensity={lightOn ? 0.2 : 0.03} color={config.waterType === 'marine' ? '#5577aa' : '#669966'} />
 

@@ -13,7 +13,6 @@ interface GlassTankProps {
 export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTankProps) {
   const dims = tankDimensions(size);
   const surfaceRef = useRef<THREE.Mesh>(null);
-  const waterRef = useRef<THREE.Mesh>(null);
 
   const glassThickness = 0.12;
   const frameWidth = 0.06;
@@ -22,33 +21,32 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
   const d = dims.depth;
   const highQuality = graphicsQuality === 'high';
 
-  const waterColor = waterType === 'marine' ? '#0a3f5c' : '#1a4a35';
   const frameColor = waterType === 'marine' ? '#151f28' : '#151f18';
   const glassTint = waterType === 'marine' ? '#eaf6fb' : '#eef8f2';
   const attenuationColor = waterType === 'marine' ? '#b8ddf0' : '#c8eed8';
 
+  // Surface geometry in XY plane (no pre-rotation — the mesh applies rotation-x)
   const surfaceGeom = useMemo(() => {
     const geom = new THREE.PlaneGeometry(w - 0.2, d - 0.2, 40, 40);
-    geom.rotateX(-Math.PI / 2);
     return geom;
   }, [w, d]);
 
   useFrame((_, delta) => {
-    // Animate water surface
+    // Animate water surface — waves along the mesh-local Z axis (vertical in world space)
     if (surfaceRef.current && highQuality) {
       const pos = surfaceRef.current.geometry.attributes.position;
       const t = Date.now() * 0.0008;
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
-        const z = pos.getY(i);
-        pos.setZ(i, Math.sin(x * 2.5 + t) * 0.02 + Math.cos(z * 2 + t * 1.1) * 0.018 + Math.sin((x + z) * 1.5 + t * 0.7) * 0.01);
+        const y = pos.getY(i);
+        pos.setZ(i,
+          Math.sin(x * 2.5 + t) * 0.02 +
+          Math.cos(y * 2 + t * 1.1) * 0.018 +
+          Math.sin((x + y) * 1.5 + t * 0.7) * 0.01
+        );
       }
       pos.needsUpdate = true;
-    }
-    // Subtle water color shift
-    if (waterRef.current) {
-      const mat = waterRef.current.material as THREE.MeshPhysicalMaterial;
-      mat.opacity = 0.42 + Math.sin(Date.now() * 0.0005) * 0.03;
+      surfaceRef.current.geometry.computeVertexNormals();
     }
     delta;
   });
@@ -164,22 +162,12 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
         </mesh>
       ))}
 
-      {/* === WATER VOLUME === */}
-      <mesh ref={waterRef} position={[0, 0, 0]}>
-        <boxGeometry args={[w - 0.04, h - 0.06, d - 0.04]} />
-        <meshPhysicalMaterial
-          color={waterColor}
-          metalness={0}
-          roughness={0.05}
-          transparent
-          opacity={0.42}
-          envMapIntensity={0.2}
-          depthWrite={false}
-        />
-      </mesh>
+      {/* NOTE: No flat water volume overlay — depth is now handled by scene fog in AquariumScene */}
+      {/* (removed the boxGeometry meshPhysicalMaterial that created the uniform veil) */}
 
       {/* === WATER SURFACE === */}
-      <mesh ref={surfaceRef} position={[0, h / 2 - 0.18, 0]} geometry={surfaceGeom}>
+      {/* The geometry is a plane in XY; rotation-x tips it horizontal (XZ plane in world) */}
+      <mesh ref={surfaceRef} position={[0, h / 2 - 0.18, 0]} rotation-x={-Math.PI / 2} geometry={surfaceGeom}>
         <meshPhysicalMaterial
           color="#d8f0f8"
           roughness={0.02}
