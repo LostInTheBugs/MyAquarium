@@ -1,8 +1,8 @@
-# 🐠 MyAquarium — Aquarium 3D Interactif
+# 🐠 MyAquarium — Interactive 3D Aquarium
 
-Application web immersive de création et personnalisation d'un aquarium 3D réaliste dans le navigateur. Choisissez eau douce ou eau de mer, peuplez votre bac de poissons, plantes et décorations, puis interagissez en temps réel avec la scène Three.js.
+Immersive web application to create and customize a realistic 3D aquarium in the browser. Choose fresh or salt water, stock your tank with fish, plants and decorations, then interact in real time with the Three.js scene.
 
-Version courante : **2026.08.001** — [Voir les releases](https://github.com/LostInTheBugs/MyAquarium/releases)
+Current version: **2026.08.001** — [See releases](https://github.com/LostInTheBugs/MyAquarium/releases)
 
 ## 🚀 Installation
 
@@ -13,18 +13,18 @@ npm install
 npm run dev
 ```
 
-L'application sera accessible sur `http://localhost:5173` (dev server Vite).
+The app will be available at `http://localhost:5173` (Vite dev server).
 
-## 🐳 Déploiement Docker
+## 🐳 Docker deployment
 
 ```bash
-cp .env.example .env        # PORT=8000 par défaut
+cp .env.example .env        # PORT=8000 by default
 docker compose up -d
 ```
 
-L'image utilise `nginx:alpine` pour servir le build statique. Le port d'écoute interne de nginx est piloté par la variable d'environnement `PORT` (défaut **8000**). Le `docker-compose.yml` inclus s'intègre avec Traefik comme reverse proxy.
+The image uses `nginx:alpine` to serve the static build. The internal nginx listen port is driven by the `PORT` environment variable (default **8000**). The included `docker-compose.yml` integrates with Traefik as a reverse proxy.
 
-Build manuel sans compose :
+Manual build without compose:
 
 ```bash
 docker build -t myaquarium .
@@ -33,85 +33,85 @@ docker run -d -p 8000:8000 -e PORT=8000 myaquarium
 
 ## ⚙️ Configuration
 
-| Variable | Défaut | Description |
+| Variable | Default | Description |
 |---|---|---|
-| `PORT` | `8000` | Port d'écoute interne du conteneur nginx. Surchargeable dans `.env` ou `docker-compose.yml`. |
+| `PORT` | `8000` | Internal listen port of the nginx container. Overridable in `.env` or `docker-compose.yml`. |
 
-Le projet ne comporte pas d'autre configuration serveur. Le reverse proxy (Traefik) gère le HTTPS et le routage externe sur les ports 80/443.
+The project has no other server configuration. The reverse proxy (Traefik) handles HTTPS and external routing on ports 80/443.
 
 ## 🏗️ Architecture
 
 ```
 src/
-├── main.tsx                          # Point d'entrée
-├── App.tsx                           # Composant racine
+├── main.tsx                          # Entry point
+├── App.tsx                           # Root component
 ├── store.tsx                         # State management (Context + Reducer)
-├── types.ts                          # Types TypeScript
-├── index.css                         # Styles globaux (Tailwind CSS)
+├── types.ts                          # TypeScript types
+├── index.css                         # Global styles (Tailwind CSS)
 ├── data/
-│   ├── index.ts                      # Accès unifié aux données
-│   ├── freshwater.ts                 # Éléments eau douce
-│   └── marine.ts                     # Éléments eau de mer
+│   ├── index.ts                      # Unified data access
+│   ├── freshwater.ts                 # Freshwater elements
+│   └── marine.ts                     # Saltwater elements
 └── components/
-    ├── ConfigScreen.tsx              # Écran de configuration initiale
-    ├── AquariumScene.tsx             # Scène 3D principale (Three.js)
-    ├── CustomizationPanel.tsx        # Panneau latéral de personnalisation
-    ├── InfoPanel.tsx                 # Panneau d'informations et contrôle objet
-    ├── GlassTank.tsx                 # Cuve en verre 3D
-    ├── SandFloor.tsx                 # Sol / substrat
-    ├── Fish.tsx                      # Poissons animés
-    ├── Plant.tsx                     # Plantes avec animation de balancement
-    ├── Coral.tsx                     # Coraux et vie marine
-    ├── Decoration.tsx                # Décorations (château, épave, etc.)
-    ├── Equipment.tsx                 # Équipements (pompe, filtre, etc.)
-    ├── BubbleSystem.tsx              # Système de bulles
-    └── ParticleSystem.tsx            # Particules en suspension
+    ├── ConfigScreen.tsx              # Initial configuration screen
+    ├── AquariumScene.tsx             # Main 3D scene (Three.js)
+    ├── CustomizationPanel.tsx        # Side customization panel
+    ├── InfoPanel.tsx                 # Info panel and object control
+    ├── GlassTank.tsx                 # 3D glass tank
+    ├── SandFloor.tsx                 # Floor / substrate
+    ├── Fish.tsx                      # Animated fish
+    ├── Plant.tsx                     # Plants with swaying animation
+    ├── Coral.tsx                     # Corals and marine life
+    ├── Decoration.tsx                # Decorations (castle, wreck, etc.)
+    ├── Equipment.tsx                 # Equipment (pump, filter, etc.)
+    ├── BubbleSystem.tsx              # Bubble system
+    └── ParticleSystem.tsx            # Suspended particles
 ```
 
-## 🎮 Fonctionnalités
+## 🎮 Features
 
-- **Configuration** : Choix eau douce / eau de mer, 3 tailles
-- **Personnalisation** : Ajout de poissons, plantes, coraux, décorations
-- **Pompe à air** : Activation/désactivation, 3 niveaux d'intensité
-- **Animations réalistes** : Poissons qui nagent, plantes qui ondulent
-- **Interaction 3D** : Rotation, zoom, sélection et déplacement d'objets
-- **Sauvegarde locale** : Persistance dans localStorage
-- **3 niveaux graphiques** : Basse, moyenne, haute qualité
+- **Configuration**: fresh / salt water choice, 3 sizes
+- **Customization**: add fish, plants, corals, decorations
+- **Air pump**: on/off, 3 intensity levels
+- **Realistic animations**: swimming fish, swaying plants
+- **3D interaction**: rotation, zoom, object selection and movement
+- **Local save**: persistence in localStorage
+- **3 graphics levels**: low, medium, high quality
 
-## ➕ Ajouter de nouveaux éléments
+## ➕ Adding new elements
 
-### 1. Ajouter un poisson
+### 1. Add a fish
 
-Dans `src/data/freshwater.ts` ou `src/data/marine.ts` :
+In `src/data/freshwater.ts` or `src/data/marine.ts`:
 
 ```typescript
 {
-  id: 'mon-nouveau-poisson',
-  name: 'Mon Poisson',
+  id: 'my-new-fish',
+  name: 'My Fish',
   category: 'fish',
-  waterType: 'freshwater',  // ou 'marine' ou 'both'
+  waterType: 'freshwater',  // or 'marine' or 'both'
   minTankSize: 'small',     // 'small' | 'medium' | 'large'
   maxCount: 8,
-  description: 'Description courte.',
+  description: 'Short description.',
   icon: '🐟',
-  modelType: 'fish-custom',  // identifiant pour le rendu 3D
+  modelType: 'fish-custom',  // identifier for the 3D render
 }
 ```
 
-### 2. Ajouter le rendu 3D
+### 2. Add the 3D render
 
-Dans `src/components/AquariumScene.tsx`, ajouter un cas dans le switch :
+In `src/components/AquariumScene.tsx`, add a case to the switch:
 
 ```tsx
 case 'fish':
   return <Fish modelType={element.modelType} ... />;
 ```
 
-Dans `src/components/Fish.tsx`, ajouter la couleur pour le nouveau `modelType` dans le `useMemo` des couleurs.
+In `src/components/Fish.tsx`, add the color for the new `modelType` in the `useMemo` of colors.
 
-### 3. Catégories
+### 3. Categories
 
-Si vous ajoutez une nouvelle catégorie, mettez à jour :
+If you add a new category, update:
 - `src/types.ts` → `ElementCategory`
 - `src/data/index.ts` → `categoryLabels`, `categoryIcons`
 
@@ -130,40 +130,40 @@ This project was built entirely through AI-assisted sessions (Hermes Agent, deep
 
 Full breakdown: [TOKENS.md](TOKENS.md).
 
-## 🔄 Remplacer les modèles par des fichiers GLTF/GLB
+## 🔄 Replacing models with GLTF/GLB files
 
-Les modèles 3D actuels sont procéduraux. Pour utiliser des fichiers GLTF/GLB :
+The current 3D models are procedural. To use GLTF/GLB files:
 
-1. Placer les fichiers dans `public/models/`
-2. Remplacer le composant correspondant par `useGLTF` de `@react-three/drei` :
+1. Place the files in `public/models/`
+2. Replace the corresponding component with `useGLTF` from `@react-three/drei`:
 
 ```tsx
 import { useGLTF } from '@react-three/drei';
 
 function CustomModel({ position, scale }: { position: [number, number, number], scale: number }) {
-  const { scene } = useGLTF('/models/mon-modele.glb');
+  const { scene } = useGLTF('/models/my-model.glb');
   return <primitive object={scene} position={position} scale={scale} />;
 }
 ```
 
-## ⚙️ Modifier les règles de compatibilité
+## ⚙️ Changing the compatibility rules
 
-Dans `src/store.tsx`, fonction `canAddElement()` :
-- Taille minimum : `sizeOrder.indexOf(config.size) < sizeOrder.indexOf(element.minTankSize)`
-- Nombre maximum : `existingCount >= element.maxCount`
-- Capacité poissons : `totalFish >= maxFishCount(config.size)`
-- Compatibilité eau : `element.waterType !== config.waterType`
+In `src/store.tsx`, function `canAddElement()`:
+- Minimum size: `sizeOrder.indexOf(config.size) < sizeOrder.indexOf(element.minTankSize)`
+- Maximum count: `existingCount >= element.maxCount`
+- Fish capacity: `totalFish >= maxFishCount(config.size)`
+- Water compatibility: `element.waterType !== config.waterType`
 
-Modifier ces conditions pour ajuster les règles.
+Modify these conditions to adjust the rules.
 
 ## 🛠️ Technologies
 
 - **React 19** + **TypeScript 6**
-- **Three.js** + **React Three Fiber** + **Drei** (rendu 3D)
+- **Three.js** + **React Three Fiber** + **Drei** (3D rendering)
 - **Tailwind CSS 4** (styles)
 - **Vite 8** (build / dev server)
 
-## 📦 Build production
+## 📦 Production build
 
 ```bash
 npm run build
