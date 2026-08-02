@@ -153,6 +153,33 @@ function CausticsProjector({ size, waterType, quality }: { size: import('../type
   );
 }
 
+// Soft contact shadow under the tank: a radial gradient blob, cheap and stable.
+// (drei's ContactShadows quad inherits the scene fog, which would smear it green.)
+function SoftContactShadow({ footprint, y }: { footprint: [number, number]; y: number }) {
+  const texture = useMemo(() => {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, 'rgba(0,0,0,0.85)');
+    g.addColorStop(0.45, 'rgba(0,0,0,0.55)');
+    g.addColorStop(0.8, 'rgba(0,0,0,0.16)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }, []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return (
+    <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
+      <planeGeometry args={[footprint[0] * 1.35, footprint[1] * 1.35]} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} fog={false} />
+    </mesh>
+  );
+}
+
 function SceneContent() {
   const { state, dispatch } = useAquariumStore();
   const { config, placedElements, pumpEnabled, pumpIntensity, selectedElementId, showAdvancedEffects, graphicsQuality, cameraReset, lightOn } = state;
@@ -224,6 +251,14 @@ function SceneContent() {
           <CausticsProjector size={config.size} waterType={config.waterType} quality={graphicsQuality} />
         </>
       )}
+
+      {/* Ground plane — dark matte surface anchoring the tank; fog off so it stays neutral */}
+      <mesh position={[0, -dims.height / 2 - 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[24, 24]} />
+        <meshStandardMaterial color="#0a0d11" roughness={1} metalness={0} fog={false} />
+      </mesh>
+      {/* Soft contact shadow under the tank */}
+      <SoftContactShadow footprint={[dims.width + 0.5, dims.depth + 0.5]} y={-dims.height / 2 - 0.195} />
 
       {/* LED ramp on top */}
       <LEDRamp size={config.size} lightOn={lightOn} intensity={lightIntensity} />
