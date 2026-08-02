@@ -1,4 +1,4 @@
-import { useRef, Suspense } from 'react';
+import { useRef, Suspense, useEffect, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
@@ -33,16 +33,105 @@ function LEDRamp({ size, lightOn, intensity }: { size: import('../types').TankSi
   );
 }
 
+const CAUSTIC_TILE = 512;
+
+// Procedural caustic map for the spot light projector.
+// Two tileable sine nets (A and B) are pre-rendered once side by side in a 1024px source
+// canvas. Every frame the map canvas is re-composited from these nets at two drifting
+// offsets (slightly different speeds => organic deformation), mimicking light refracting
+// through an animated water surface. The spotlight samples this texture directly
+// (three r185 SpotLight.map), so the sand receives a real projected, moving pattern.
+function createCausticMap() {
+  const tile = document.createElement('canvas');
+  tile.width = tile.height = CAUSTIC_TILE * 2;
+  const tctx = tile.getContext('2d')!;
+  const img = tctx.createImageData(CAUSTIC_TILE, CAUSTIC_TILE);
+
+  // Classic caustic web: product of two sheared sine nets. Integer frequencies keep the
+  // tile seamless. Rendered as alpha-only (bright web over transparent), composited later.
+  const renderNet = (f1: number, f2: number, f3: number, f4: number, shear: number, contrast: number, offsetX: number) => {
+    for (let y = 0; y < CAUSTIC_TILE; y++) {
+      for (let x = 0; x < CAUSTIC_TILE; x++) {
+        const u = x / CAUSTIC_TILE;
+        const v = y / CAUSTIC_TILE;
+        const n1 = Math.sin(2 * Math.PI * (f1 * u + shear * Math.sin(2 * Math.PI * f2 * v)));
+        const n2 = Math.sin(2 * Math.PI * (f3 * v + shear * Math.sin(2 * Math.PI * f4 * u)));
+        const web = Math.pow(Math.max(0, (0.5 + 0.5 * n1) * (0.5 + 0.5 * n2)), contrast);
+        const i = (y * CAUSTIC_TILE + x) * 4;
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+        img.data[i + 3] = Math.round(web * 255);
+      }
+    }
+    tctx.putImageData(img, offsetX, 0);
+  };
+
+  renderNet(10, 7, 8, 9, 1.15, 2.2, 0);      // net A — main web
+  renderNet(6, 9, 11, 5, 0.9, 1.6, CAUSTIC_TILE); // net B — secondary web
+
+  // Per-frame composite canvas (this one becomes the spotlight map).
+  const map = document.createElement('canvas');
+  map.width = map.height = CAUSTIC_TILE;
+  const ctx = map.getContext('2d')!;
+  const texture = new THREE.CanvasTexture(map);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+
+  const draw = (oA: { x: number; y: number }, oB: { x: number; y: number }) => {
+    const s = CAUSTIC_TILE;
+    // Mid-dark base: keeps the sand beige and lit between web filaments.
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#4d4d4d';
+    ctx.fillRect(0, 0, s, s);
+    // Layer A — main web drifting at oA.
+    const ax = (oA.x * s) - s;
+    const ay = (oA.y * s) - s;
+    for (let j = 0; j < 2; j++) {
+      for (let k = 0; k < 2; k++) {
+        ctx.drawImage(tile, 0, 0, s, s, ax + k * s, ay + j * s, s, s);
+      }
+    }
+    // Layer B — secondary web drifting at a different speed, added for depth.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.45;
+    const bx = (oB.x * s) - s;
+    const by = (oB.y * s) - s;
+    for (let j = 0; j < 2; j++) {
+      for (let k = 0; k < 2; k++) {
+        ctx.drawImage(tile, s, 0, s, s, bx + k * s, by + j * s, s, s);
+      }
+    }
+  };
+
+  return {
+    texture,
+    draw,
+    dispose: () => texture.dispose(),
+  };
+}
+
 function CausticsProjector({ size, waterType, quality }: { size: import('../types').TankSize; waterType: import('../types').WaterType; quality: string }) {
   const dims = tankDimensions(size);
   const lightRef = useRef<THREE.SpotLight>(null);
-  if (quality === 'low') return null;
+  const enabled = quality !== 'low';
+  const caustics = useMemo(() => createCausticMap(), []);
+  useEffect(() => () => caustics.dispose(), [caustics]);
 
-  useFrame(() => {
-    if (lightRef.current) {
-      lightRef.current.intensity = quality === 'high' ? 0.35 + Math.sin(Date.now() * 0.0015) * 0.1 : 0.2;
-    }
+  useFrame(({ clock }) => {
+    if (!enabled || !lightRef.current) return;
+    const t = clock.elapsedTime;
+    const norm = (v: number) => ((v % 1) + 1) % 1;
+    // Two layers drifting at slightly different speeds and directions.
+    caustics.draw(
+      { x: norm(t * 0.012), y: norm(t * 0.008) },
+      { x: norm(t * 0.0075), y: norm(-t * 0.013) },
+    );
+    caustics.texture.needsUpdate = true;
   });
+
+  if (!enabled) return null;
 
   return (
     <spotLight
@@ -50,8 +139,12 @@ function CausticsProjector({ size, waterType, quality }: { size: import('../type
       position={[0, dims.height / 2 + 0.3, 0]}
       angle={0.9}
       penumbra={0.6}
-      intensity={quality === 'high' ? 0.35 : 0.2}
+      // decay 0/1 instead of the default 2: at this height the quadratic falloff would
+      // swallow the projected pattern before it reaches the sand.
+      decay={1}
+      intensity={quality === 'high' ? 0.7 : 0.4}
       color={waterType === 'marine' ? '#88ccff' : '#aaddaa'}
+      map={caustics.texture}
       castShadow
       shadow-mapSize-width={256}
       shadow-mapSize-height={256}
