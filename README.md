@@ -115,6 +115,21 @@ Si vous ajoutez une nouvelle catégorie, mettez à jour :
 - `src/types.ts` → `ElementCategory`
 - `src/data/index.ts` → `categoryLabels`, `categoryIcons`
 
+## Development cost (LLM)
+
+This project was built entirely through AI-assisted sessions (Hermes Agent, deepseek-v4-pro / deepseek-v4-flash). Usage so far (cumulative as of 2026-08-02):
+
+| Metric | Value |
+|---|---|
+| Input tokens | 750 878 |
+| Output tokens | 502 973 |
+| **Total (input + output)** | **1 253 851** |
+| Cache read (reused at reduced price) | 118 600 448 |
+| API calls | 978 |
+| **Estimated cost** | **≈ 0.86 USD** |
+
+Full breakdown: [TOKENS.md](TOKENS.md).
+
 ## 🔄 Remplacer les modèles par des fichiers GLTF/GLB
 
 Les modèles 3D actuels sont procéduraux. Pour utiliser des fichiers GLTF/GLB :
