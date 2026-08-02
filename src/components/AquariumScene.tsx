@@ -65,8 +65,8 @@ function createCausticMap() {
     tctx.putImageData(img, offsetX, 0);
   };
 
-  renderNet(10, 7, 8, 9, 1.15, 2.2, 0);      // net A — main web
-  renderNet(6, 9, 11, 5, 0.9, 1.6, CAUSTIC_TILE); // net B — secondary web
+  renderNet(5, 3, 4, 5, 1.15, 1.2, 0);      // net A — main web (large cells)
+  renderNet(3, 4, 6, 3, 0.9, 0.9, CAUSTIC_TILE); // net B — secondary web (large cells)
 
   // Per-frame composite canvas (this one becomes the spotlight map).
   const map = document.createElement('canvas');
@@ -80,10 +80,11 @@ function createCausticMap() {
 
   const draw = (oA: { x: number; y: number }, oB: { x: number; y: number }) => {
     const s = CAUSTIC_TILE;
-    // Mid-dark base: keeps the sand beige and lit between web filaments.
+    // Dark base: keeps the sand between web filaments distinctly darker,
+    // so the projected pattern reads with strong contrast.
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    ctx.fillStyle = '#4d4d4d';
+    ctx.fillStyle = '#262626';
     ctx.fillRect(0, 0, s, s);
     // Layer A — main web drifting at oA.
     const ax = (oA.x * s) - s;
@@ -95,7 +96,7 @@ function createCausticMap() {
     }
     // Layer B — secondary web drifting at a different speed, added for depth.
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.55;
     const bx = (oB.x * s) - s;
     const by = (oB.y * s) - s;
     for (let j = 0; j < 2; j++) {
@@ -142,7 +143,10 @@ function CausticsProjector({ size, waterType, quality }: { size: import('../type
       // decay 0/1 instead of the default 2: at this height the quadratic falloff would
       // swallow the projected pattern before it reaches the sand.
       decay={1}
-      intensity={quality === 'high' ? 0.7 : 0.4}
+      // Deliberately high: at 3.8 units above the sand, decay=1 divides the
+      // intensity by the distance (~0.26x), which previously swallowed the
+      // projected pattern entirely. Exaggerated on purpose for visibility.
+      intensity={quality === 'high' ? 3.5 : 2.0}
       color={waterType === 'marine' ? '#88ccff' : '#aaddaa'}
       map={caustics.texture}
       castShadow
