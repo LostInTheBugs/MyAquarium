@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { WaterType, TankSize } from '../types';
 import { useAquariumStore } from '../store';
 
-export function ConfigScreen() {
+export function ConfigScreen({ onDiscover }: { onDiscover?: (waterType: WaterType) => void }) {
   const { dispatch } = useAquariumStore();
   const [waterType, setWaterType] = useState<WaterType>('freshwater');
   const [size, setSize] = useState<TankSize>('medium');
@@ -56,6 +56,9 @@ export function ConfigScreen() {
                 <li>🪨 Roches et galets</li>
                 <li>🪵 Racines naturelles</li>
               </ul>
+              <span className="mt-4 inline-block px-4 py-1.5 rounded-lg bg-ocean-500/20 border border-ocean-400/40 text-ocean-200 text-xs font-medium">
+                ✨ Vitrine pré-remplie : charger directement
+              </span>
             </button>
 
             {/* Marine card */}
@@ -77,7 +80,83 @@ export function ConfigScreen() {
                 <li>⭐ Étoiles de mer</li>
                 <li>🦀 Crustacés</li>
               </ul>
+              <span className="mt-4 inline-block px-4 py-1.5 rounded-lg bg-ocean-500/20 border border-ocean-400/40 text-ocean-200 text-xs font-medium">
+                ✨ Vitrine pré-remplie : charger directement
+              </span>
             </button>
+          </div>
+
+          {/* Showcase presets */}
+          <div className="pt-2">
+            <p className="text-ocean-400 text-sm mb-3">— ou démarrez avec un aquarium vitrine déjà décoré —</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => dispatch({ type: 'LOAD_PRESET', waterType: 'freshwater' })}
+                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-emerald-500/20 cursor-pointer"
+              >
+                🐠 Vitrine eau douce
+              </button>
+              <button
+                onClick={() => dispatch({ type: 'LOAD_PRESET', waterType: 'marine' })}
+                className="px-6 py-3 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-sky-500/20 cursor-pointer"
+              >
+                🪸 Vitrine eau de mer
+              </button>
+            </div>
+          </div>
+
+          {/* Discovery — éducation */}
+          <div className="pt-10 border-t border-ocean-700/40">
+            <h2 className="text-5xl font-bold text-ocean-50 mb-3">Découvrir l'écosystème des aquariums</h2>
+            <p className="text-ocean-200 text-lg mb-8">
+              Explorez les espèces, plantes et éléments qui composent un aquarium — fiches d'information et découverte
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Discovery freshwater card */}
+              <button
+                onClick={() => onDiscover?.('freshwater')}
+                className="relative group p-8 rounded-2xl border-2 transition-all duration-300 cursor-pointer
+                  border-ocean-700/50 bg-ocean-800/40 hover:border-ocean-500/50 hover:bg-ocean-700/40"
+              >
+                <div className="text-6xl mb-4">🌿</div>
+                <h3 className="text-2xl font-semibold text-ocean-50 mb-2">Eau douce</h3>
+                <p className="text-ocean-300 text-sm">
+                  Poissons tropicaux, plantes aquatiques, racines et décors naturels — apprenez à les connaître
+                </p>
+                <ul className="mt-4 text-left text-ocean-300 text-xs space-y-1">
+                  <li>🐟 7 espèces de poissons tropicaux</li>
+                  <li>🌿 6 plantes aquatiques</li>
+                  <li>🏖️ 5 substrats naturels</li>
+                  <li>🏰 7 décorations</li>
+                </ul>
+                <span className="mt-4 inline-block px-4 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-medium">
+                  📚 Fiches d'information
+                </span>
+              </button>
+
+              {/* Discovery marine card */}
+              <button
+                onClick={() => onDiscover?.('marine')}
+                className="relative group p-8 rounded-2xl border-2 transition-all duration-300 cursor-pointer
+                  border-ocean-700/50 bg-ocean-800/40 hover:border-ocean-500/50 hover:bg-ocean-700/40"
+              >
+                <div className="text-6xl mb-4">🪸</div>
+                <h3 className="text-2xl font-semibold text-ocean-50 mb-2">Eau de mer</h3>
+                <p className="text-ocean-300 text-sm">
+                  Poissons marins, coraux colorés, anémones et vie récifale — plongez dans l'écosystème marin
+                </p>
+                <ul className="mt-4 text-left text-ocean-300 text-xs space-y-1">
+                  <li>🐠 5 poissons marins</li>
+                  <li>🪸 8 coraux et invertébrés</li>
+                  <li>🏖️ 3 substrats récifaux</li>
+                  <li>🏰 5 décorations</li>
+                </ul>
+                <span className="mt-4 inline-block px-4 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-200 text-xs font-medium">
+                  📚 Fiches d'information
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

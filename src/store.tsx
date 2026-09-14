@@ -1,10 +1,12 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react';
-import type { AquariumState, TankConfig, PlacedElement, ElementCategory, TankSize } from './types';
+import type { AquariumState, TankConfig, PlacedElement, ElementCategory, TankSize, WaterType } from './types';
 import { getElementById, getElements } from './data';
 import { maxFishCount } from './types';
+import { PRESETS } from './data/presets';
 
 type Action =
   | { type: 'SET_CONFIG'; config: TankConfig }
+  | { type: 'LOAD_PRESET'; waterType: WaterType }
   | { type: 'ADD_ELEMENT'; elementId: string }
   | { type: 'REMOVE_ELEMENT'; instanceId: string }
   | { type: 'DUPLICATE_ELEMENT'; instanceId: string }
@@ -22,7 +24,8 @@ type Action =
   | { type: 'TOGGLE_ADVANCED_EFFECTS' }
   | { type: 'TRIGGER_CAMERA_RESET' }
   | { type: 'CAMERA_RESET_DONE' }
-  | { type: 'TOGGLE_LIGHT' };
+  | { type: 'TOGGLE_LIGHT' }
+  | { type: 'TOGGLE_VIEW_MODE' };
 
 const initialState: AquariumState = {
   config: null,
@@ -35,6 +38,7 @@ const initialState: AquariumState = {
   showAdvancedEffects: true,
   cameraReset: false,
   lightOn: true,
+  viewMode: '3d',
 };
 
 let instanceCounter = 0;
@@ -119,6 +123,27 @@ function reducer(state: AquariumState, action: Action): AquariumState {
   switch (action.type) {
     case 'SET_CONFIG':
       return { ...initialState, config: action.config };
+
+    case 'LOAD_PRESET': {
+      const preset = PRESETS[action.waterType];
+      if (!preset) return state;
+      const elements: PlacedElement[] = preset.elements.map(e => {
+        instanceCounter++;
+        return {
+          instanceId: `el-${instanceCounter}`,
+          elementId: e.elementId,
+          position: e.position,
+          rotation: e.rotation,
+          scale: e.scale,
+        };
+      });
+      return {
+        ...initialState,
+        config: { waterType: action.waterType, size: 'large' },
+        placedElements: elements,
+        pumpEnabled: preset.pumpEnabled,
+      };
+    }
 
     case 'ADD_ELEMENT': {
       const error = canAddElement(state, action.elementId);
@@ -235,6 +260,9 @@ function reducer(state: AquariumState, action: Action): AquariumState {
 
     case 'TOGGLE_LIGHT':
       return { ...state, lightOn: !state.lightOn };
+
+    case 'TOGGLE_VIEW_MODE':
+      return { ...state, viewMode: state.viewMode === '3d' ? '2d' : '3d' };
 
     default:
       return state;

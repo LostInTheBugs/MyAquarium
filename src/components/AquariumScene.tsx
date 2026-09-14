@@ -1,12 +1,13 @@
 import { useRef, Suspense, useEffect, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, Lightformer } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, Environment, Lightformer, OrthographicCamera, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAquariumStore } from '../store';
 import { tankDimensions } from '../types';
 import { getElementById } from '../data';
 import { GlassTank } from './GlassTank';
 import { SandFloor } from './SandFloor';
+import { useTextureSafe, BACKGROUND_TEXTURES } from './textures';
 import { Fish } from './Fish';
 import { Plant } from './Plant';
 import { Coral } from './Coral';
@@ -184,29 +185,137 @@ function SoftContactShadow({ footprint, y }: { footprint: [number, number]; y: n
   );
 }
 
+// Décor de fond collé contre la paroi arrière intérieure du bac
+// (comme une déco d'aquarium classique). Texture par type d'eau.
+// fog={false} : le fond est une déco fixe, pas atténuée par l'eau
+// (le recalibrage du fog le fondrait sinon, de face).
+// La texture couvre tout le panneau (mode "cover" : crop sans déformation).
+function AquariumBackdrop({ size, waterType }: { size: import('../types').TankSize; waterType: import('../types').WaterType }) {
+  const dims = tankDimensions(size);
+  const url = BACKGROUND_TEXTURES[waterType];
+  const tex = useTextureSafe(url);
+
+  const cover = useMemo(() => {
+    if (!tex) return null;
+    const img = tex.image as HTMLImageElement;
+    const imgRatio = img.width / img.height;
+    const panelRatio = dims.width / dims.height;
+    const t = tex.clone();
+    t.colorSpace = THREE.SRGBColorSpace;
+    if (imgRatio > panelRatio) {
+      // image trop large : crop horizontal
+      t.repeat.x = imgRatio / panelRatio;
+      t.offset.x = (1 - 1 / t.repeat.x) / 2;
+    } else {
+      // image trop haute : crop vertical
+      t.repeat.y = panelRatio / imgRatio;
+      t.offset.y = (1 - 1 / t.repeat.y) / 2;
+    }
+    return t;
+  }, [tex, dims]);
+
+  if (!tex || !cover) return null;
+  return (
+    <mesh position={[0, 0, -dims.depth / 2 + 0.02]} renderOrder={-1}>
+      <planeGeometry args={[dims.width, dims.height]} />
+      <meshBasicMaterial map={cover} toneMapped={false} side={THREE.FrontSide} fog={false} />
+    </mesh>
+  );
+}
+
+// Vue initiale (mode 3D) adaptée à la taille du bac : frontale, légèrement
+// décalée, avec assez de recul pour embrasser tout le décor.
+function getCameraPos(size: import('../types').TankSize): [number, number, number] {
+  switch (size) {
+    case 'large': return [2.5, 3, 10.5];
+    case 'medium': return [1.8, 2.6, 8.5];
+    default: return [1.2, 2.2, 6.5];
+  }
+}
+
+// Bascule 3D ↔ 2D : caméra perspective libre avec OrbitControls en 3D,
+// caméra orthographique fixe de face en 2D (vue "fond d'écran").
+// La position/target 3D est sauvegardée au passage en 2D et restaurée au retour.
+function ViewModeRig({ size, viewMode, controlsRef }: {
+  size: import('../types').TankSize;
+  viewMode: '3d' | '2d';
+  controlsRef: React.MutableRefObject<any>;
+}) {
+  const dims = tankDimensions(size);
+  const { camera, size: vp } = useThree();
+  const savedRef = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+
+  useEffect(() => {
+    if (viewMode === '2d' && !savedRef.current) {
+      savedRef.current = {
+        pos: camera.position.clone(),
+        target: (controlsRef.current?.target ?? new THREE.Vector3(0, 0, 0)).clone(),
+      };
+    } else if (viewMode === '3d' && savedRef.current) {
+      camera.position.copy(savedRef.current.pos);
+      if (controlsRef.current) {
+        controlsRef.current.target.copy(savedRef.current.target);
+        controlsRef.current.update();
+      }
+      savedRef.current = null;
+    }
+  }, [viewMode, camera, controlsRef]);
+
+  if (viewMode === '2d') {
+    // Frustum orthographique : le bac remplit ~80% du cadre quel que soit l'écran
+    const m = 1.22;
+    const aspect = vp.width / Math.max(1, vp.height);
+    let hw: number, hh: number;
+    if (aspect > dims.width / dims.height) {
+      hh = (dims.height / 2) * m;
+      hw = hh * aspect;
+    } else {
+      hw = (dims.width / 2) * m;
+      hh = hw / aspect;
+    }
+    return (
+      <OrthographicCamera
+        makeDefault
+        position={[0, 0, 12]}
+        near={0.1}
+        far={100}
+        left={-hw}
+        right={hw}
+        top={hh}
+        bottom={-hh}
+      />
+    );
+  }
+
+  return (
+    <>
+      <PerspectiveCamera makeDefault position={getCameraPos(size)} fov={45} near={0.1} far={200} />
+      <OrbitControls
+        ref={controlsRef}
+        target={[0, 0, 0]}
+        minDistance={dims.width * 0.8}
+        maxDistance={dims.width * 3}
+        minPolarAngle={0.15}
+        maxPolarAngle={Math.PI * 0.75}
+        enableDamping
+        dampingFactor={0.08}
+      />
+    </>
+  );
+}
+
 function SceneContent() {
   const { state, dispatch } = useAquariumStore();
   const { config, placedElements, pumpEnabled, pumpIntensity, selectedElementId, showAdvancedEffects, graphicsQuality, cameraReset, lightOn } = state;
   const audio = useAudioSystem();
 
+  // Hooks appelés inconditionnellement (avant le early return) — règles des hooks
+  const controlsRef = useRef<any>(null);
+  const prevPumpRef = useRef(pumpEnabled);
+
   if (!config) return null;
 
   const dims = tankDimensions(config.size);
-
-  // Water depth fog — linear attenuation recalibrated per frame to camera distance.
-  // Ensures fog only acts across the tank depth, not the camera-to-tank distance.
-  const fogColor = config.waterType === 'marine' ? '#4a6a7a' : '#4a6a5a';
-
-  // Recalibrate fog near/far every frame based on actual camera distance to tank centre.
-  // This keeps attenuation strictly across the tank depth regardless of zoom/orbit.
-  useFrame(({ scene, camera }) => {
-    if (scene.fog && scene.fog instanceof THREE.Fog) {
-      const d = camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
-      const halfDepth = dims.depth / 2;
-      scene.fog.near = Math.max(0.5, d - halfDepth);
-      scene.fog.far = d + halfDepth;
-    }
-  });
 
   const substrateEl = placedElements.find(pe => {
     const e = config ? getElementById(config.waterType, pe.elementId) : undefined;
@@ -214,19 +323,14 @@ function SceneContent() {
   });
 
   const handleClearSelection = () => dispatch({ type: 'SELECT_ELEMENT', instanceId: null });
-  const controlsRef = useRef<any>(null);
   if (cameraReset && controlsRef.current) { controlsRef.current.reset(); dispatch({ type: 'CAMERA_RESET_DONE' }); }
 
-  const prevPumpRef = useRef(pumpEnabled);
   if (prevPumpRef.current !== pumpEnabled) { prevPumpRef.current = pumpEnabled; audio.setPumpState(pumpEnabled); }
 
   const lightIntensity = graphicsQuality === 'low' ? 0.5 : graphicsQuality === 'high' ? 1.2 : 0.9;
 
   return (
     <>
-      {/* Water depth fog — linear, recalculated per frame based on camera distance */}
-      <fog attach="fog" args={[fogColor, 5, 15]} />
-
       {/* Ambient */}
       <ambientLight intensity={lightOn ? 0.2 : 0.03} color={config.waterType === 'marine' ? '#5577aa' : '#669966'} />
 
@@ -308,6 +412,7 @@ function SceneContent() {
       </Environment>
 
       <GlassTank size={config.size} waterType={config.waterType} graphicsQuality={graphicsQuality} />
+      <AquariumBackdrop size={config.size} waterType={config.waterType} />
       <SandFloor size={config.size} waterType={config.waterType} substrateType={substrateEl?.elementId} graphicsQuality={graphicsQuality} />
 
       {/* Elements */}
@@ -330,7 +435,7 @@ function SceneContent() {
         <ParticleSystem enabled={showAdvancedEffects} waterType={config.waterType} size={config.size} />
       )}
 
-      <OrbitControls ref={controlsRef} target={[0, 0, 0]} minDistance={dims.width * 0.8} maxDistance={dims.width * 3} minPolarAngle={0.15} maxPolarAngle={Math.PI * 0.75} enableDamping dampingFactor={0.08} />
+      <ViewModeRig size={config.size} viewMode={state.viewMode} controlsRef={controlsRef} />
 
       <mesh position={[0, 0, -dims.depth]} onClick={handleClearSelection} visible={false}>
         <planeGeometry args={[dims.width * 3, dims.height * 3]} />
@@ -341,9 +446,20 @@ function SceneContent() {
 }
 
 export function AquariumScene() {
+  // Vue initiale adaptée à la taille du bac : frontale, légèrement décalée,
+  // avec assez de recul pour embrasser tout le décor.
+  const { state } = useAquariumStore();
+  const cameraPos = useMemo(() => {
+    switch (state.config?.size) {
+      case 'large': return [2.5, 3, 10.5] as [number, number, number];
+      case 'medium': return [1.8, 2.6, 8.5] as [number, number, number];
+      default: return [1.2, 2.2, 6.5] as [number, number, number];
+    }
+  }, [state.config?.size]);
+
   return (
     <Canvas
-      camera={{ position: [7, 3.5, 8], fov: 45 }}
+      camera={{ position: cameraPos, fov: 45 }}
       shadows
       gl={{
         antialias: true,

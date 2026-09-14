@@ -243,6 +243,15 @@ export function CustomizationPanel() {
               💾 Sauvegarder
             </button>
             <button
+              onClick={() => dispatch({ type: 'TOGGLE_VIEW_MODE' })}
+              className={`w-full py-2 px-3 rounded-lg text-sm transition-all cursor-pointer border
+                ${state.viewMode === '2d'
+                  ? 'bg-sky-600/80 hover:bg-sky-500/80 text-white border-sky-400/40'
+                  : 'bg-ocean-700/60 hover:bg-ocean-600/60 text-ocean-200 border-ocean-600/30'}`}
+            >
+              {state.viewMode === '2d' ? '🔄 Vue 3D (libre)' : '🖼️ Vue 2D (face)'}
+            </button>
+            <button
               onClick={() => dispatch({ type: 'TRIGGER_CAMERA_RESET' })}
               className="w-full py-2 px-3 rounded-lg text-sm bg-ocean-700/60 hover:bg-ocean-600/60 text-ocean-200 border border-ocean-600/30 transition-all cursor-pointer"
             >

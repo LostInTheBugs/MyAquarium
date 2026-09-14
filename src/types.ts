@@ -21,6 +21,16 @@ export interface AquariumElement {
   rarity?: 'common' | 'uncommon' | 'rare';
   icon: string;
   modelType: string;
+  /** Fiche d'information éducative (page Découverte), sources Fishipedia */
+  info?: {
+    scientificName: string;
+    size: string;       // taille adulte, ex. "3-4 cm"
+    behavior: string;   // sociabilité, ex. "banc", "solitaire"
+    diet: string;       // régime, ex. "omnivore"
+    longevity?: string; // ex. "5 ans"
+    origin?: string;    // ex. "Bassin amazonien"
+    status?: string;    // statut IUCN, ex. "LC"
+  };
 }
 
 export interface PlacedElement {
@@ -53,6 +63,7 @@ export interface AquariumState {
   showAdvancedEffects: boolean;
   cameraReset: boolean;
   lightOn: boolean;
+  viewMode: '3d' | '2d';
 }
 
 export function tankDimensions(size: TankSize): TankDimensions {
