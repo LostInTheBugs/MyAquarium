@@ -10,12 +10,12 @@ services:
     labels:
       - "traefik.enable=true"
       # HTTP → HTTPS redirect
-      - "traefik.http.routers.aqua-web.rule=Host(`games.cloudfr.net`) && PathPrefix(`/aquarium`)"
+      - "traefik.http.routers.aqua-web.rule=Host(`${DOMAIN:-your-domain.example.com}`) && PathPrefix(`/aquarium`)"
       - "traefik.http.routers.aqua-web.middlewares=aqua-redirect"
       - "traefik.http.middlewares.aqua-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.aqua-redirect.redirectscheme.permanent=true"
       # HTTPS router
-      - "traefik.http.routers.aqua-web-secure.rule=Host(`games.cloudfr.net`) && PathPrefix(`/aquarium`)"
+      - "traefik.http.routers.aqua-web-secure.rule=Host(`${DOMAIN:-your-domain.example.com}`) && PathPrefix(`/aquarium`)"
       - "traefik.http.routers.aqua-web-secure.tls=true"
       - "traefik.http.routers.aqua-web-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.aqua-web-secure.service=aqua-web"

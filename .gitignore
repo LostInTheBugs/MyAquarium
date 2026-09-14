@@ -3,3 +3,7 @@ dist/
 *.log
 .env
 .DS_Store
+*.tsbuildinfo
+tools/
+games-hub-index.html
+shots-tests/
