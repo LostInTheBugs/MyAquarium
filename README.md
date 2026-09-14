@@ -2,7 +2,7 @@
 
 Immersive web application to create and customize a realistic 3D aquarium in the browser. Choose fresh or salt water, stock your tank with fish, plants and decorations, then interact in real time with the Three.js scene.
 
-Current version: **2026.08.001** — [See releases](https://github.com/LostInTheBugs/MyAquarium/releases)
+Current version: **2026.09.001** — [See releases](https://github.com/LostInTheBugs/MyAquarium/releases)
 
 ## 🚀 Installation
 
@@ -18,7 +18,7 @@ The app will be available at `http://localhost:5173` (Vite dev server).
 ## 🐳 Docker deployment
 
 ```bash
-cp .env.example .env        # PORT=8000 by default
+cp .env.example .env        # set DOMAIN and PORT (defaults shown in .env.example)
 docker compose up -d
 ```
 
@@ -35,6 +35,7 @@ docker run -d -p 8000:8000 -e PORT=8000 myaquarium
 
 | Variable | Default | Description |
 |---|---|---|
+| `DOMAIN` | `your-domain.example.com` | Hostname announced by the Traefik reverse proxy for this app (`${DOMAIN}` in `docker-compose.yml`). |
 | `PORT` | `8000` | Internal listen port of the nginx container. Overridable in `.env` or `docker-compose.yml`. |
 
 The project has no other server configuration. The reverse proxy (Traefik) handles HTTPS and external routing on ports 80/443.
@@ -44,36 +45,48 @@ The project has no other server configuration. The reverse proxy (Traefik) handl
 ```
 src/
 ├── main.tsx                          # Entry point
-├── App.tsx                           # Root component
+├── App.tsx                           # Root component — screens, view modes, fullscreen
 ├── store.tsx                         # State management (Context + Reducer)
 ├── types.ts                          # TypeScript types
-├── index.css                         # Global styles (Tailwind CSS)
+├── index.css                         # Global styles (Tailwind CSS) + keyframes
 ├── data/
 │   ├── index.ts                      # Unified data access
-│   ├── freshwater.ts                 # Freshwater elements
-│   └── marine.ts                     # Saltwater elements
+│   ├── freshwater.ts                 # Freshwater elements (+ info cards)
+│   ├── marine.ts                     # Saltwater elements (+ info cards)
+│   └── presets.ts                    # Showcase tanks (pre-decorated)
+├── hooks/
+│   └── useAudioSystem.ts             # Procedural ambience audio
 └── components/
-    ├── ConfigScreen.tsx              # Initial configuration screen
-    ├── AquariumScene.tsx             # Main 3D scene (Three.js)
+    ├── ConfigScreen.tsx              # Home screen — water type, size, showcases
+    ├── DiscoverScreen.tsx            # Discover pages — tiles + info modals
+    ├── AquariumScene.tsx             # Main 3D scene (Three.js) + 2D/3D camera rig
     ├── CustomizationPanel.tsx        # Side customization panel
     ├── InfoPanel.tsx                 # Info panel and object control
     ├── GlassTank.tsx                 # 3D glass tank
     ├── SandFloor.tsx                 # Floor / substrate
-    ├── Fish.tsx                      # Animated fish
-    ├── Plant.tsx                     # Plants with swaying animation
-    ├── Coral.tsx                     # Corals and marine life
+    ├── Billboard.tsx                 # Crossed textured planes (sprites)
+    ├── textures.ts                   # Texture/sprite URL maps + safe loader
+    ├── Fish.tsx                      # Camera-facing sprite fish
+    ├── Plant.tsx / PlantTypes.ts     # Plants (sprites) + shared prop types
+    ├── Coral.tsx / CoralTypes.ts     # Corals & invertebrates (sprites) + shared prop types
     ├── Decoration.tsx                # Decorations (castle, wreck, etc.)
     ├── Equipment.tsx                 # Equipment (pump, filter, etc.)
     ├── BubbleSystem.tsx              # Bubble system
     └── ParticleSystem.tsx            # Suspended particles
 ```
 
+Textures and sprites live in `public/textures/` (substrate/ , background/ , sprites/ , sprites/anim/).
+
 ## 🎮 Features
 
 - **Configuration**: fresh / salt water choice, 3 sizes
 - **Customization**: add fish, plants, corals, decorations
+- **Photorealistic rendering**: AI-generated textures and sprites for fish, plants, corals, substrates and backdrops
+- **Discover section**: educational species cards (scientific name, size, diet, longevity, IUCN status…) with animated illustrations
+- **Showcase tanks**: pre-decorated fresh / salt water aquariums in one click
+- **2D view**: face view of the tank, with an optional fullscreen wallpaper mode
 - **Air pump**: on/off, 3 intensity levels
-- **Realistic animations**: swimming fish, swaying plants
+- **Realistic animations**: swimming fish, swaying plants, projected caustics
 - **3D interaction**: rotation, zoom, object selection and movement
 - **Local save**: persistence in localStorage
 - **3 graphics levels**: low, medium, high quality
@@ -107,7 +120,7 @@ case 'fish':
   return <Fish modelType={element.modelType} ... />;
 ```
 
-In `src/components/Fish.tsx`, add the color for the new `modelType` in the `useMemo` of colors.
+Then map the new `modelType` to its sprite in `src/components/textures.ts` (`FISH_SPRITES`) — fish are drawn as camera-facing billboards.
 
 ### 3. Categories
 
