@@ -3,9 +3,11 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, Lightformer, OrthographicCamera, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAquariumStore } from '../store';
-import { tankDimensions } from '../types';
+import { tankDimensions, tankFloorY } from '../types';
 import { getElementById } from '../data';
 import { GlassTank } from './GlassTank';
+import { TankStand } from './TankStand';
+import { RoomEnvironment } from './RoomEnvironment';
 import { SandFloor } from './SandFloor';
 import { useTextureSafe, BACKGROUND_TEXTURES } from './textures';
 import { Fish } from './Fish';
@@ -20,16 +22,36 @@ import { useAudioSystem } from '../hooks/useAudioSystem';
 function LEDRamp({ size, lightOn, intensity }: { size: import('../types').TankSize; lightOn: boolean; intensity: number }) {
   const dims = tankDimensions(size);
   if (!lightOn) return null;
+  const w = dims.width;
+  const barY = dims.height / 2 + 0.34;
+  const postX = w / 2 + 0.16;
+  const armHalf = (postX + (w / 2 - 0.09)) / 2; // centre du bras entre montant et barre
   return (
-    <group position={[0, dims.height / 2 + 0.12, 0]}>
-      <mesh castShadow>
-        <boxGeometry args={[dims.width - 0.2, 0.05, 0.06]} />
-        <meshStandardMaterial color="#1a1a1a" roughness={0.25} metalness={0.9} />
-      </mesh>
-      <mesh position={[0, -0.02, 0.03]}>
-        <planeGeometry args={[dims.width - 0.5, 0.015]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.05} emissive="#ffffff" emissiveIntensity={intensity * 1.5} />
-      </mesh>
+    <group>
+      {/* Barre LED */}
+      <group position={[0, barY, 0]}>
+        <mesh castShadow>
+          <boxGeometry args={[w - 0.18, 0.075, 0.09]} />
+          <meshStandardMaterial color="#232323" roughness={0.25} metalness={0.9} />
+        </mesh>
+        <mesh position={[0, -0.034, 0.035]}>
+          <planeGeometry args={[w - 0.4, 0.02]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.05} emissive="#ffffff" emissiveIntensity={intensity * 1.8} />
+        </mesh>
+      </group>
+      {/* Supports en L fixés sur les bords du bac */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh position={[s * postX, dims.height / 2 + 0.2, 0]} castShadow>
+            <boxGeometry args={[0.07, 0.34, 0.07]} />
+            <meshStandardMaterial color="#33343a" roughness={0.35} metalness={0.85} />
+          </mesh>
+          <mesh position={[s * armHalf, barY, 0]} castShadow>
+            <boxGeometry args={[0.26, 0.06, 0.06]} />
+            <meshStandardMaterial color="#33343a" roughness={0.35} metalness={0.85} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }
@@ -227,9 +249,9 @@ function AquariumBackdrop({ size, waterType }: { size: import('../types').TankSi
 // décalée, avec assez de recul pour embrasser tout le décor.
 function getCameraPos(size: import('../types').TankSize): [number, number, number] {
   switch (size) {
-    case 'large': return [2.5, 3, 10.5];
-    case 'medium': return [1.8, 2.6, 8.5];
-    default: return [1.2, 2.2, 6.5];
+    case 'large': return [2.4, 3.05, 11.4];
+    case 'medium': return [1.8, 2.7, 9.2];
+    default: return [1.2, 2.3, 7.2];
   }
 }
 
@@ -292,7 +314,7 @@ function ViewModeRig({ size, viewMode, controlsRef }: {
       <PerspectiveCamera makeDefault position={getCameraPos(size)} fov={45} near={0.1} far={200} />
       <OrbitControls
         ref={controlsRef}
-        target={[0, 0, 0]}
+        target={[0, -0.35, 0]}
         minDistance={dims.width * 0.8}
         maxDistance={dims.width * 3}
         minPolarAngle={0.15}
@@ -360,13 +382,16 @@ function SceneContent() {
         </>
       )}
 
-      {/* Ground plane — dark matte surface anchoring the tank; fog off so it stays neutral */}
-      <mesh position={[0, -dims.height / 2 - 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[24, 24]} />
-        <meshStandardMaterial color="#0a0d11" roughness={1} metalness={0} fog={false} />
-      </mesh>
-      {/* Soft contact shadow under the tank */}
-      <SoftContactShadow footprint={[dims.width + 0.5, dims.depth + 0.5]} y={-dims.height / 2 - 0.195} />
+      {/* Pièce : sol + mur du fond + meuble sous le bac — masqués en vue 2D
+          (fond d'écran épuré : le bac seul) */}
+      {state.viewMode === '3d' && (
+        <>
+          <RoomEnvironment size={config.size} />
+          <TankStand size={config.size} />
+          {/* Ombre douce au pied du meuble */}
+          <SoftContactShadow footprint={[dims.width + 1.6, dims.depth + 1.6]} y={tankFloorY(config.size) + 0.004} />
+        </>
+      )}
 
       {/* LED ramp on top */}
       <LEDRamp size={config.size} lightOn={lightOn} intensity={lightIntensity} />
@@ -449,13 +474,7 @@ export function AquariumScene() {
   // Vue initiale adaptée à la taille du bac : frontale, légèrement décalée,
   // avec assez de recul pour embrasser tout le décor.
   const { state } = useAquariumStore();
-  const cameraPos = useMemo(() => {
-    switch (state.config?.size) {
-      case 'large': return [2.5, 3, 10.5] as [number, number, number];
-      case 'medium': return [1.8, 2.6, 8.5] as [number, number, number];
-      default: return [1.2, 2.2, 6.5] as [number, number, number];
-    }
-  }, [state.config?.size]);
+  const cameraPos = useMemo(() => getCameraPos(state.config?.size ?? 'small'), [state.config?.size]);
 
   return (
     <Canvas

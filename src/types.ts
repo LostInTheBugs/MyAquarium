@@ -81,3 +81,21 @@ export function maxFishCount(size: TankSize): number {
     case 'large': return 25;
   }
 }
+
+/** Hauteur du meuble sous le bac selon la taille (unités monde). */
+export function standHeight(size: TankSize): number {
+  switch (size) {
+    case 'large': return 0.62;
+    case 'medium': return 0.55;
+    default: return 0.48;
+  }
+}
+
+/** Écart entre le bas du bac (cadre inférieur) et le haut du meuble. */
+export const STAND_GAP = 0.18;
+
+/** Altitude du sol de la pièce (sous le meuble). */
+export function tankFloorY(size: TankSize): number {
+  const dims = tankDimensions(size);
+  return -dims.height / 2 - STAND_GAP - standHeight(size);
+}

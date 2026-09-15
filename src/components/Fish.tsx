@@ -52,6 +52,9 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
   const url = FISH_SPRITES[modelType] || FISH_SPRITES['fish-neon'];
   const tex = useTextureSafe(url);
   const speed = useMemo(() => species.speed * (0.8 + Math.random() * 0.4), [species.speed]);
+  // Phase stable par poisson (remplace un parseFloat(uuid) qui donnait NaN
+  // dès que l'uuid commençait par une lettre → poisson invisible).
+  const phaseSeed = useMemo(() => Math.random() * Math.PI * 2, []);
   const angle = useRef(Math.random() * Math.PI * 2);
   const swimPhase = useRef(Math.random() * Math.PI * 2);
   const targetY = useRef(initialPos[1]);
@@ -80,7 +83,7 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
     swimPhase.current += delta * (isIdle ? 2 : 9);
 
     // Changements de direction doux
-    angle.current += Math.sin(Date.now() * 0.0004 + parseFloat(groupRef.current.uuid.slice(0, 4))) * 0.008;
+    angle.current += Math.sin(Date.now() * 0.0004 + phaseSeed) * 0.008;
 
     // Bobbing vertical
     targetY.current += Math.sin(Date.now() * 0.0006 + swimPhase.current) * 0.004;
@@ -106,9 +109,11 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
     rightVec.set(1, 0, 0).applyQuaternion(camera.quaternion);
     groupRef.current.scale.x = dirVec.dot(rightVec) > 0 ? -1 : 1;
 
-    // Ondulation du corps simulée (léger tilt)
-    groupRef.current.rotation.z = Math.sin(swimPhase.current) * 0.09;
-    groupRef.current.rotation.x = Math.sin(swimPhase.current * 0.7) * 0.05;
+    // Ondulation du corps simulée (léger tilt). rotateX/rotateZ multiplient le
+    // quaternion (préserve l'orientation billboard face caméra) — alors que
+    // rotation.x/z écrasaient le quaternion copié de la caméra.
+    groupRef.current.rotateZ(Math.sin(swimPhase.current) * 0.09);
+    groupRef.current.rotateX(Math.sin(swimPhase.current * 0.7) * 0.05);
   });
 
   if (!tex) return null; // sprite pas encore chargé

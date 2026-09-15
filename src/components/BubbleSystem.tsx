@@ -48,7 +48,7 @@ export function BubbleSystem({ enabled, intensity, size, quality = 'high' }: Bub
   const accTime = useRef(0);
 
   const bps = intensity === 'high' ? 14 : intensity === 'medium' ? 8 : 4;
-  const diffuserPos: [number, number, number] = [dims.width * 0.15, -dims.height / 2 + 0.25, dims.depth * 0.15];
+  const diffuserPos: [number, number, number] = [dims.width * 0.15, -dims.height / 2 + 0.22, dims.depth * 0.15];
 
   useFrame((_, delta) => {
     if (!enabled) { setBubbles(prev => prev.slice(0, Math.max(0, prev.length - 3))); return; }
@@ -62,7 +62,7 @@ export function BubbleSystem({ enabled, intensity, size, quality = 'high' }: Bub
         return [...kept, {
           id, pos: [diffuserPos[0] + (Math.random() - 0.5) * 0.1, diffuserPos[1], diffuserPos[2] + (Math.random() - 0.5) * 0.1],
           speed: 0.12 + Math.random() * 0.25 * (intensity === 'high' ? 1.4 : 1),
-          bSize: 0.006 + Math.random() * 0.022 * (quality === 'high' ? 1 : 0.7),
+          bSize: 0.008 + Math.random() * 0.026 * (quality === 'high' ? 1 : 0.7),
           key: id,
         }];
       });
@@ -78,27 +78,22 @@ export function BubbleSystem({ enabled, intensity, size, quality = 'high' }: Bub
         <meshStandardMaterial color="#9999aa" roughness={0.85} />
       </mesh>
 
-      {/* Air hose */}
-      <mesh position={[diffuserPos[0], (dims.height / 2 - 0.5 + diffuserPos[1]) / 2, diffuserPos[2]]} castShadow>
-        <cylinderGeometry args={[0.012, 0.012, dims.height / 2 - 0.5 - diffuserPos[1], 6]} />
-        <meshStandardMaterial color="#334455" roughness={0.3} metalness={0.2} />
+      {/* Air hose — fin et translucide (comme un tuyau silicone réel),
+          du diffuseur jusqu'au bord supérieur du bac */}
+      <mesh position={[diffuserPos[0], (dims.height / 2 - 0.12 + diffuserPos[1]) / 2, diffuserPos[2]]}>
+        <cylinderGeometry args={[0.007, 0.007, dims.height / 2 - 0.12 - diffuserPos[1], 6]} />
+        <meshPhysicalMaterial color="#cfe6f2" roughness={0.05} transparent opacity={0.22} envMapIntensity={0.2} />
       </mesh>
 
-      {/* Pump unit at top-back */}
-      <mesh position={[dims.width * 0.2, dims.height / 2 - 0.04, -dims.depth / 2 + 0.08]} castShadow>
-        <boxGeometry args={[0.14, 0.07, 0.09]} />
+      {/* Pump unit posé sur le bord arrière du bac (hors du volume d'eau) */}
+      <mesh position={[dims.width * 0.22, dims.height / 2 + 0.1, -dims.depth / 2 + 0.06]} castShadow>
+        <boxGeometry args={[0.14, 0.08, 0.09]} />
         <meshStandardMaterial color="#3a5a7a" roughness={0.25} metalness={0.55} emissive={enabled ? '#112233' : '#050505'} emissiveIntensity={0.3} />
       </mesh>
       {/* Status LED */}
-      <mesh position={[dims.width * 0.2, dims.height / 2 + 0.01, -dims.depth / 2 + 0.13]}>
+      <mesh position={[dims.width * 0.22, dims.height / 2 + 0.155, -dims.depth / 2 + 0.06]}>
         <sphereGeometry args={[0.01, 8, 8]} />
         <meshStandardMaterial color={enabled ? '#00ff55' : '#222222'} roughness={0.1} emissive={enabled ? '#00ff55' : '#050505'} emissiveIntensity={1.2} />
-      </mesh>
-
-      {/* Hose connection ring */}
-      <mesh position={[dims.width * 0.2, dims.height / 2 - 0.1, -dims.depth / 2 + 0.1]}>
-        <torusGeometry args={[0.025, 0.007, 6, 8]} />
-        <meshStandardMaterial color="#334455" roughness={0.3} />
       </mesh>
 
       {/* Bubbles */}

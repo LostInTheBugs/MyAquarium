@@ -10,6 +10,54 @@ interface GlassTankProps {
   graphicsQuality?: 'low' | 'medium' | 'high';
 }
 
+/**
+ * Carte de normales procédurale (tuilable) pour la surface de l'eau :
+ * somme d'ondes directionnelles à fréquences entières → normales animées
+ * par simple défilement (offset) chaque frame.
+ */
+function makeSurfaceNormalMap(): THREE.Texture {
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d')!;
+  const img = ctx.createImageData(S, S);
+  const waves: [number, number, number][] = [
+    [1, 2, 1.0],
+    [2, -1, 0.7],
+    [1, 1, 0.5],
+    [3, 1, 0.35],
+    [-1, 2, 0.5],
+  ];
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const u = x / S;
+      const v = y / S;
+      let sx = 0;
+      let sy = 0;
+      for (const [fx, fy, amp] of waves) {
+        const p = 2 * Math.PI * (fx * u + fy * v);
+        sx += amp * fx * Math.cos(p);
+        sy += amp * fy * Math.cos(p);
+      }
+      const k = 0.28;
+      const nx = -sx * k;
+      const ny = -sy * k;
+      const len = Math.hypot(nx, ny, 1);
+      const i = (y * S + x) * 4;
+      img.data[i] = Math.round(((nx / len) * 0.5 + 0.5) * 255);
+      img.data[i + 1] = Math.round(((ny / len) * 0.5 + 0.5) * 255);
+      img.data[i + 2] = Math.round(((1 / len) * 0.5 + 0.5) * 255);
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.NoColorSpace;
+  return t;
+}
+
 export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTankProps) {
   const dims = tankDimensions(size);
   const surfaceRef = useRef<THREE.Mesh>(null);
@@ -19,11 +67,11 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
   const w = dims.width;
   const h = dims.height;
   const d = dims.depth;
-  const highQuality = graphicsQuality === 'high';
+  const highQuality = graphicsQuality !== 'low';
 
   const frameColor = waterType === 'marine' ? '#151f28' : '#151f18';
-  const glassTint = waterType === 'marine' ? '#eaf6fb' : '#eef8f2';
-  const attenuationColor = waterType === 'marine' ? '#b8ddf0' : '#c8eed8';
+  const glassTint = waterType === 'marine' ? '#dff0fa' : '#e8f6ee';
+  const waterTint = waterType === 'marine' ? '#aedcf2' : '#bfe6d2';
 
   // Surface geometry in XY plane (no pre-rotation — the mesh applies rotation-x)
   const surfaceGeom = useMemo(() => {
@@ -31,7 +79,14 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
     return geom;
   }, [w, d]);
 
-  useFrame((_, delta) => {
+  // Normales animées de la surface (défilement continu)
+  const surfaceNormal = useMemo(() => {
+    const t = makeSurfaceNormalMap();
+    t.repeat.set(3, 2);
+    return t;
+  }, []);
+
+  useFrame(() => {
     // Animate water surface — waves along the mesh-local Z axis (vertical in world space)
     if (surfaceRef.current && highQuality) {
       const pos = surfaceRef.current.geometry.attributes.position;
@@ -48,42 +103,48 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
       pos.needsUpdate = true;
       surfaceRef.current.geometry.computeVertexNormals();
     }
-    delta;
+    // Défilement des normales de surface (scintillement lumineux)
+    const ts = Date.now() * 0.001;
+    surfaceNormal.offset.set(ts * 0.012, ts * 0.009);
   });
 
-  // Glass material — uses transmission for realistic glass in high quality
-  const glassMaterial = useMemo(() => {
-    if (highQuality) {
-      return (
-        <meshPhysicalMaterial
-          color={glassTint}
-          metalness={0}
-          roughness={0.05}
-          transmission={0.92}
-          thickness={glassThickness}
-          ior={1.45}
-          attenuationColor={attenuationColor}
-          attenuationDistance={0.7}
-          envMapIntensity={0.6}
-          clearcoat={0.3}
-          clearcoatRoughness={0.05}
-          specularIntensity={1}
-          specularColor="#ffffff"
-        />
-      );
-    }
-    return (
-      <meshPhysicalMaterial
-        color={glassTint}
-        metalness={0.02}
-        roughness={0.08}
-        transparent
-        opacity={0.18}
-        envMapIntensity={0.5}
-        clearcoat={0.3}
-      />
-    );
-  }, [highQuality, glassTint, glassThickness, attenuationColor]);
+  // Verre SANS transmission : three.js ne rend PAS les objets transparents
+  // (sprites poissons/plantes/coraux, bulles, particules) dans la passe de
+  // transmission → ils disparaissaient entièrement derrière les vitres.
+  // Verre transparent classique : teinte légère + reflets env + clearcoat,
+  // le tri par profondeur se fait tout seul (vitres devant le contenu du bac).
+  const glassPanelMaterial = useMemo(() => (
+    <meshPhysicalMaterial
+      color={glassTint}
+      metalness={0}
+      roughness={0.03}
+      transparent
+      opacity={0.1}
+      envMapIntensity={0.85}
+      clearcoat={1}
+      clearcoatRoughness={0.03}
+      specularIntensity={1}
+      specularColor="#ffffff"
+      depthWrite={false}
+    />
+  ), [glassTint]);
+
+  const surfaceMaterial = useMemo(() => (
+    <meshPhysicalMaterial
+      color="#cfeaf6"
+      roughness={0.06}
+      metalness={0.05}
+      transparent
+      opacity={0.42}
+      envMapIntensity={0.7}
+      clearcoat={0.6}
+      clearcoatRoughness={0.05}
+      normalMap={surfaceNormal}
+      normalScale={new THREE.Vector2(0.5, 0.5)}
+      side={THREE.DoubleSide}
+      depthWrite={false}
+    />
+  ), [surfaceNormal]);
 
   const panelGeom = useMemo(() => ({
     frontBack: new THREE.BoxGeometry(w + glassThickness * 2, h, glassThickness),
@@ -96,47 +157,23 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
       {/* === GLASS PANELS === */}
       {/* Front */}
       <mesh position={[0, 0, d / 2 + glassThickness / 2]} geometry={panelGeom.frontBack}>
-        {glassMaterial}
+        {glassPanelMaterial}
       </mesh>
       {/* Back */}
       <mesh position={[0, 0, -d / 2 - glassThickness / 2]} geometry={panelGeom.frontBack}>
-        <meshPhysicalMaterial
-          color={glassTint}
-          metalness={0}
-          roughness={0.08}
-          transmission={highQuality ? 0.88 : undefined}
-          thickness={glassThickness}
-          ior={highQuality ? 1.45 : undefined}
-          attenuationColor={highQuality ? attenuationColor : undefined}
-          attenuationDistance={highQuality ? 0.7 : undefined}
-          envMapIntensity={0.4}
-          transparent={!highQuality}
-          opacity={highQuality ? undefined : 0.22}
-        />
+        {glassPanelMaterial}
       </mesh>
       {/* Left */}
       <mesh position={[-w / 2 - glassThickness / 2, 0, 0]} geometry={panelGeom.side}>
-        {glassMaterial}
+        {glassPanelMaterial}
       </mesh>
       {/* Right */}
       <mesh position={[w / 2 + glassThickness / 2, 0, 0]} geometry={panelGeom.side}>
-        {glassMaterial}
+        {glassPanelMaterial}
       </mesh>
       {/* Bottom */}
       <mesh position={[0, -h / 2 - glassThickness / 2, 0]} geometry={panelGeom.bottom} receiveShadow>
-        <meshPhysicalMaterial
-          color={glassTint}
-          metalness={0}
-          roughness={0.12}
-          transmission={highQuality ? 0.85 : undefined}
-          thickness={glassThickness}
-          ior={highQuality ? 1.45 : undefined}
-          attenuationColor={highQuality ? attenuationColor : undefined}
-          attenuationDistance={highQuality ? 0.7 : undefined}
-          envMapIntensity={0.3}
-          transparent={!highQuality}
-          opacity={highQuality ? undefined : 0.25}
-        />
+        {glassPanelMaterial}
       </mesh>
 
       {/* === FRAME (top/bottom rims only) === */}
@@ -162,24 +199,23 @@ export function GlassTank({ size, waterType, graphicsQuality = 'high' }: GlassTa
         </mesh>
       ))}
 
-      {/* NOTE: No flat water volume overlay — depth is now handled by scene fog in AquariumScene */}
-      {/* (removed the boxGeometry meshPhysicalMaterial that created the uniform veil) */}
+      {/* === VOLUME D'EAU === */}
+      {/* Teinte très légère : donne la présence de l'eau sans effet de voile */}
+      <mesh position={[0, -0.025, 0]}>
+        <boxGeometry args={[w - 0.24, h - 0.31, d - 0.24]} />
+        <meshBasicMaterial color={waterTint} transparent opacity={0.055} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+
+      {/* Ligne de niveau d'eau (ménisque) : bande fine et claire à la surface */}
+      <mesh position={[0, h / 2 - 0.18, 0]}>
+        <boxGeometry args={[w - 0.18, 0.02, d - 0.18]} />
+        <meshBasicMaterial color="#e8f7fb" transparent opacity={0.45} depthWrite={false} />
+      </mesh>
 
       {/* === WATER SURFACE === */}
       {/* The geometry is a plane in XY; rotation-x tips it horizontal (XZ plane in world) */}
       <mesh ref={surfaceRef} position={[0, h / 2 - 0.18, 0]} rotation-x={-Math.PI / 2} geometry={surfaceGeom}>
-        <meshPhysicalMaterial
-          color="#d8f0f8"
-          roughness={0.02}
-          metalness={0.08}
-          transparent
-          opacity={0.28}
-          envMapIntensity={0.3}
-          clearcoat={0.5}
-          clearcoatRoughness={0.02}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
+        {surfaceMaterial}
       </mesh>
 
       {/* Subtle internal glass highlights */}
