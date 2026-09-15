@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { TankSize } from '../types';
 import { tankDimensions } from '../types';
-import { useTextureSafe, FISH_SPRITES } from './textures';
+import { useTextureSafe, FISH_SPRITES, FISH_FACING, FISH_ATLAS } from './textures';
 
 interface FishProps {
   modelType: string;
@@ -39,12 +39,13 @@ const speciesMap: Record<string, FishSpecies> = {
 };
 const defaultSpecies: FishSpecies = { size: 0.2, speed: 0.5 };
 
-// ─── Poissons sprite (billboard orienté, nage animée par shader) ───
+// ─── Poissons sprite (billboard orienté, nage animée) ───
 //
-// La nage est simulée dans le vertex shader (injection onBeforeCompile) :
-//   - ondulation du corps : S-curve dans le plan du sprite, amplitude croissante
-//     vers la queue (pow(b, 1.6)) ;
-//   - battement de queue : compression/étirement le long du corps, ancré à la tête.
+// Deux couches d'animation :
+//   - frames de nage réelles : atlas keyés des clips LTX (FISH_ATLAS), l'offset
+//     de texture avance par frame — c'est ce qui donne la nage visible ;
+//   - ondulation shader (vertex, onBeforeCompile) : S-curve du corps + battement
+//     de queue, atténuée quand les frames tournent (elles font déjà le travail).
 // Le déplacement combine nage par élans (burst & coast), dérive de cap, bobbing
 // vertical avec tangage, et trajectoire Lissajous propre à chaque poisson.
 
@@ -58,6 +59,11 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
   const species = useMemo(() => speciesMap[modelType] || defaultSpecies, [modelType]);
   const url = FISH_SPRITES[modelType] || FISH_SPRITES['fish-neon'];
   const tex = useTextureSafe(url);
+  // Atlas de nage (frames LTX keyées). Tant qu'il n'est pas prêt (ou si
+  // l'espèce n'en a pas), le poisson garde son sprite statique.
+  const atlasInfo = FISH_ATLAS[modelType];
+  const atlasTex = useTextureSafe(atlasInfo?.url);
+  const animated = !!(atlasInfo && atlasTex);
   const speed = useMemo(() => species.speed * (0.8 + Math.random() * 0.4), [species.speed]);
   // Phase stable par poisson (remplace un parseFloat(uuid) qui donnait NaN
   // dès que l'uuid commençait par une lettre → poisson invisible).
@@ -75,15 +81,31 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
 
   const s = scale * species.size * 3;
   const w = useMemo(() => {
-    const img = tex?.image as HTMLImageElement | undefined;
-    const ratio = img && img.width ? img.width / img.height : 2.2;
-    return s * ratio;
-  }, [s, tex]);
+    const img = (animated ? atlasTex!.image : tex?.image) as HTMLImageElement | undefined;
+    if (img && img.width) {
+      // largeur d'une frame d'atlas (l'atlas entier contient `frames` frames)
+      const fw = animated ? img.width / atlasInfo!.frames : img.width;
+      return s * (fw / img.height);
+    }
+    return s * 2.2;
+  }, [s, tex, atlasTex, animated, atlasInfo]);
+
+  // Texture rendue : clone de l'atlas avec un offset par frame (le clone
+  // partage la source GPU → un seul upload par espèce), sinon sprite statique.
+  const dispTex = useMemo(() => {
+    if (!atlasInfo || !atlasTex) return tex;
+    const c = atlasTex.clone();
+    c.repeat.set(1 / atlasInfo.frames, 1);
+    c.offset.set(0, 0);
+    c.wrapS = THREE.ClampToEdgeWrapping;
+    c.needsUpdate = true;
+    return c;
+  }, [atlasTex, atlasInfo, tex]);
 
   // Matériau : albédo du sprite + ondulation de nage dans le vertex shader.
   const material = useMemo(() => {
     const m = new THREE.MeshStandardMaterial({
-      map: tex ?? undefined,
+      map: dispTex ?? undefined,
       transparent: true,
       alphaTest: 0.08,
       side: THREE.DoubleSide,
@@ -121,7 +143,7 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
     };
     m.customProgramCacheKey = () => 'fish-swim-v1';
     return m;
-  }, [tex, phaseSeed]);
+  }, [dispTex, phaseSeed]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -176,8 +198,9 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
     // quelle que soit la direction de nage ou la vue (2D comme 3D).
     groupRef.current.quaternion.copy(camera.quaternion);
 
-    // Flip horizontal selon la direction de nage projetée sur la droite caméra
-    // (sprite généré tête à gauche : on le retourne s'il nage vers la droite de l'écran).
+    // Flip horizontal : sens natif du sprite (FISH_FACING) vs sens de
+    // déplacement projeté sur la droite caméra — le poisson montre sa TÊTE
+    // dans le sens de la nage (corrige la nage "à reculons").
     // Dérivée exacte de la trajectoire (x = sin·halfW·0.9, z = cos(zFreq·angle)·halfD·0.92).
     dirVec.set(
       Math.cos(angle.current) * halfW * 0.9,
@@ -185,7 +208,9 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
       -Math.sin(angle.current * zFreq) * zFreq * halfD * 0.92,
     ).normalize();
     rightVec.set(1, 0, 0).applyQuaternion(camera.quaternion);
-    groupRef.current.scale.x = dirVec.dot(rightVec) > 0 ? -1 : 1;
+    const facingRight = (FISH_FACING[modelType] ?? 'left') === 'right';
+    const movingRight = dirVec.dot(rightVec) > 0;
+    groupRef.current.scale.x = facingRight === movingRight ? 1 : -1;
 
     // Tangage (montée/descente) + léger roulis de nage. rotateX/rotateZ
     // multiplient le quaternion (préserve l'orientation billboard).
@@ -198,8 +223,17 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
       sh.uniforms.uTime.value = t;
       sh.uniforms.uW.value = w;
       sh.uniforms.uH.value = s;
-      sh.uniforms.uAmp.value = ampRef.current;
+      // Amplitude atténuée quand les frames animées font déjà la nage
+      sh.uniforms.uAmp.value = ampRef.current * (animated ? 0.55 : 1);
       sh.uniforms.uFreq.value = swimRate;
+    }
+
+    // Frames d'atlas : avance l'offset de texture (aucun re-upload GPU).
+    // Cadence liée au poisson ; ralentie quand il est à l'arrêt.
+    if (animated && atlasInfo && dispTex) {
+      const fps = isIdle ? 4.5 : 11 * (0.8 + tailRate * 0.35);
+      const fi = Math.floor(t * fps + phaseSeed * 4) % atlasInfo.frames;
+      dispTex.offset.x = fi / atlasInfo.frames;
     }
   });
 

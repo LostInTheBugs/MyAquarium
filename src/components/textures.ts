@@ -86,7 +86,11 @@ export const CORAL_SPRITES: Record<string, string> = {
 /** Sprites de roches pour le sol. */
 export const ROCK_SPRITES = [asset('/textures/sprites/rock-1.webp?v=2'), asset('/textures/sprites/rock-2.webp?v=2')];
 
-/** Sprites de poissons (modelType -> sprite profil). */
+/**
+ * Sprites de poissons (modelType -> sprite profil).
+ * Orientation de la tête DANS l'image : FISH_FACING ci-dessous (mixte selon
+ * l'espèce — les sprites ont été générés à des orientations différentes).
+ */
 export const FISH_SPRITES: Record<string, string> = {
   'fish-neon': asset('/textures/sprites/fish-neon.webp?v=2'),
   'fish-guppy': asset('/textures/sprites/fish-guppy.webp?v=2'),
@@ -100,6 +104,46 @@ export const FISH_SPRITES: Record<string, string> = {
   'fish-butterfly': asset('/textures/sprites/fish-butterfly.webp?v=2'),
   'fish-goby': asset('/textures/sprites/fish-goby.webp?v=2'),
   'fish-damsel': asset('/textures/sprites/fish-damsel.webp?v=2'),
+};
+
+/**
+ * Orientation native de chaque sprite : côté où se trouve la TÊTE dans
+ * l'image (vérifié espèce par espèce). Sert au retournement horizontal
+ * quand le poisson nage dans l'autre sens à l'écran.
+ */
+export const FISH_FACING: Record<string, 'left' | 'right'> = {
+  'fish-neon': 'left',
+  'fish-clown': 'left',
+  'fish-angelfish': 'left',
+  'fish-butterfly': 'left',
+  'fish-guppy': 'left',
+  'fish-tang': 'right',
+  'fish-gold': 'right',
+  'fish-molly': 'right',
+  'fish-cory': 'right',
+  'fish-goby': 'right',
+  'fish-damsel': 'right',
+  'fish-betta': 'right',
+};
+
+/**
+ * Atlas de nage pour le bac 3D : bandes horizontales de frames keyées (RGBA)
+ * dérivées des clips LTX (voir tools/lab/key_anim.py). Purement visuel :
+ * `frames` = nombre de frames dans l'atlas ; la hauteur d'une frame = hauteur
+ * de l'atlas, la largeur = largeur / frames. Espèces absentes d'ici = pas
+ * d'animation (sprite statique + ondulation shader seulement).
+ */
+export const FISH_ATLAS: Record<string, { url: string; frames: number }> = {
+  'fish-neon': { url: asset('/textures/sprites/anim-atlas/fish-neon.webp?v=1'), frames: 12 },
+  'fish-angelfish': { url: asset('/textures/sprites/anim-atlas/fish-angelfish.webp?v=1'), frames: 33 },
+  'fish-betta': { url: asset('/textures/sprites/anim-atlas/fish-betta.webp?v=1'), frames: 33 },
+  'fish-molly': { url: asset('/textures/sprites/anim-atlas/fish-molly.webp?v=1'), frames: 33 },
+  'fish-cory': { url: asset('/textures/sprites/anim-atlas/fish-cory.webp?v=1'), frames: 33 },
+  'fish-gold': { url: asset('/textures/sprites/anim-atlas/fish-gold.webp?v=1'), frames: 33 },
+  'fish-tang': { url: asset('/textures/sprites/anim-atlas/fish-tang.webp?v=1'), frames: 33 },
+  'fish-butterfly': { url: asset('/textures/sprites/anim-atlas/fish-butterfly.webp?v=1'), frames: 33 },
+  'fish-goby': { url: asset('/textures/sprites/anim-atlas/fish-goby.webp?v=1'), frames: 33 },
+  'fish-damsel': { url: asset('/textures/sprites/anim-atlas/fish-damsel.webp?v=1'), frames: 33 },
 };
 
 /**

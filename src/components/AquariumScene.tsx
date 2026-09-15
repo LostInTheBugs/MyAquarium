@@ -335,6 +335,20 @@ function SceneContent() {
   const controlsRef = useRef<any>(null);
   const prevPumpRef = useRef(pumpEnabled);
 
+  // Crochet de diagnostic DEV uniquement (absent du build de prod) : permet aux
+  // sondes headless (tools/lab) d'inspecter la scène et de projeter des points.
+  const debugScene = useThree(s => s.scene);
+  const debugCamera = useThree(s => s.camera);
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      (window as any).__aqScene = debugScene;
+      (window as any).__aqProject = (x: number, y: number, z: number) => {
+        const v = new THREE.Vector3(x, y, z).project(debugCamera);
+        return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight };
+      };
+    }
+  }, [debugScene, debugCamera]);
+
   if (!config) return null;
 
   const dims = tankDimensions(config.size);
