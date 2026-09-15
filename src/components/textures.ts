@@ -66,8 +66,8 @@ export const PLANT_SPRITES: Record<string, string> = {
   'plant-tall': asset('/textures/sprites/plant-tall.webp?v=2'),
   'plant-broad': asset('/textures/sprites/plant-broad.webp?v=2'),
   'plant-fern': asset('/textures/sprites/plant-fern.webp?v=2'),
-  'plant-moss': asset('/textures/sprites/plant-moss.webp?v=2'),
-  'plant-red': asset('/textures/sprites/plant-red.webp?v=2'),
+  'plant-moss': asset('/textures/sprites/plant-moss.webp?v=3'),
+  'plant-red': asset('/textures/sprites/plant-red.webp?v=3'),
   'plant-grass': asset('/textures/sprites/plant-grass.webp?v=2'),
 };
 
@@ -75,7 +75,7 @@ export const PLANT_SPRITES: Record<string, string> = {
 export const CORAL_SPRITES: Record<string, string> = {
   'coral-brain': asset('/textures/sprites/coral-brain.webp?v=2'),
   'coral-branch': asset('/textures/sprites/coral-branch.webp?v=2'),
-  'coral-colorful': asset('/textures/sprites/coral-colorful.webp?v=2'),
+  'coral-colorful': asset('/textures/sprites/coral-colorful.webp?v=3'),
   anemone: asset('/textures/sprites/anemone.webp?v=2'),
   starfish: asset('/textures/sprites/starfish.webp?v=2'),
   urchin: asset('/textures/sprites/urchin.webp?v=2'),

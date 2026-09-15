@@ -39,7 +39,14 @@ const speciesMap: Record<string, FishSpecies> = {
 };
 const defaultSpecies: FishSpecies = { size: 0.2, speed: 0.5 };
 
-// ─── Poissons sprite (billboard orienté, flip selon la direction) ───
+// ─── Poissons sprite (billboard orienté, nage animée par shader) ───
+//
+// La nage est simulée dans le vertex shader (injection onBeforeCompile) :
+//   - ondulation du corps : S-curve dans le plan du sprite, amplitude croissante
+//     vers la queue (pow(b, 1.6)) ;
+//   - battement de queue : compression/étirement le long du corps, ancré à la tête.
+// Le déplacement combine nage par élans (burst & coast), dérive de cap, bobbing
+// vertical avec tangage, et trajectoire Lissajous propre à chaque poisson.
 
 export function Fish({ modelType, position: initialPos, tankSize, scale, isSelected, onSelect }: FishProps) {
   const groupRef = useRef<THREE.Group>(null);
@@ -55,9 +62,15 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
   // Phase stable par poisson (remplace un parseFloat(uuid) qui donnait NaN
   // dès que l'uuid commençait par une lettre → poisson invisible).
   const phaseSeed = useMemo(() => Math.random() * Math.PI * 2, []);
+  // Variations individuelles (trajectoire + rythme de nage)
+  const zFreq = useMemo(() => 1.05 + Math.random() * 0.5, []);
+  const burstRate = useMemo(() => 0.22 + Math.random() * 0.25, []);
+  const tailRate = useMemo(() => 0.85 + Math.random() * 0.4, []);
   const angle = useRef(Math.random() * Math.PI * 2);
   const swimPhase = useRef(Math.random() * Math.PI * 2);
   const targetY = useRef(initialPos[1]);
+  const prevY = useRef(initialPos[1]);
+  const ampRef = useRef(1);
   const idleTimer = useRef(Math.random() * 5);
 
   const s = scale * species.size * 3;
@@ -67,30 +80,90 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
     return s * ratio;
   }, [s, tex]);
 
+  // Matériau : albédo du sprite + ondulation de nage dans le vertex shader.
+  const material = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({
+      map: tex ?? undefined,
+      transparent: true,
+      alphaTest: 0.08,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      roughness: 0.4,
+    });
+    m.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = { value: 0 };
+      shader.uniforms.uPhase = { value: phaseSeed };
+      shader.uniforms.uAmp = { value: 0 };
+      shader.uniforms.uFreq = { value: 6 };
+      shader.uniforms.uW = { value: 1 };
+      shader.uniforms.uH = { value: 1 };
+      shader.vertexShader = `
+        uniform float uTime;
+        uniform float uPhase;
+        uniform float uAmp;
+        uniform float uFreq;
+        uniform float uW;
+        uniform float uH;
+      ` + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        // b : 0 = tête (x=-w/2), 1 = queue (x=+w/2)
+        float fishB = clamp(position.x / uW + 0.5, 0.0, 1.0);
+        // Ondulation du corps : S-curve, amplitude croissante vers la queue
+        float fishWave = sin(uPhase + uTime * uFreq - fishB * 4.2);
+        transformed.y += fishWave * uAmp * 0.15 * uH * pow(fishB, 1.6);
+        // Battement de queue : recul/avancée du corps ancré à la tête
+        float fishSqueeze = 1.0 - uAmp * 0.16 * sin(uPhase + uTime * uFreq - 0.9) * pow(fishB, 2.4);
+        transformed.x = -uW * 0.5 + (transformed.x + uW * 0.5) * fishSqueeze;`,
+      );
+      m.userData.shader = shader;
+    };
+    m.customProgramCacheKey = () => 'fish-swim-v1';
+    return m;
+  }, [tex, phaseSeed]);
+
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+    const dt = Math.min(delta, 0.05);
     const halfW = dims.width / 2 - 0.8;
     const halfH = dims.height / 2 - 0.8;
     const halfD = dims.depth / 2 - 0.8;
+    const t = Date.now() * 0.001;
 
     // Comportement d'arrêt occasionnel
-    idleTimer.current -= delta;
+    idleTimer.current -= dt;
     const isIdle = idleTimer.current < 0;
     if (isIdle && Math.random() < 0.01) idleTimer.current = 2 + Math.random() * 8;
 
-    const activeSpeed = isIdle ? speed * 0.05 : speed;
-    angle.current += delta * activeSpeed * 0.8;
-    swimPhase.current += delta * (isIdle ? 2 : 9);
+    // Nage par élans (burst & coast) : la vitesse ondule au lieu d'être constante
+    const burst =
+      0.6 +
+      0.34 * Math.sin(t * burstRate + phaseSeed * 2.0) +
+      0.16 * Math.sin(t * burstRate * 2.7 + phaseSeed * 3.1);
+    const activeSpeed = isIdle ? speed * 0.04 : speed * Math.max(0.22, burst);
+    angle.current += dt * activeSpeed * 0.75;
 
-    // Changements de direction doux
-    angle.current += Math.sin(Date.now() * 0.0004 + phaseSeed) * 0.008;
+    // Cadence de nage liée à la vitesse (rad/s), propre au poisson
+    const swimRate = (isIdle ? 1.8 : 5.0 + activeSpeed * 6.0) * tailRate;
+    swimPhase.current += dt * swimRate;
 
-    // Bobbing vertical
-    targetY.current += Math.sin(Date.now() * 0.0006 + swimPhase.current) * 0.004;
+    // Amplitude lissée : réduite quand le poisson est à l'arrêt
+    const ampTarget = isIdle ? 0.35 : 1;
+    ampRef.current += (ampTarget - ampRef.current) * Math.min(1, dt * 3);
+
+    // Dérive douce de cap
+    angle.current += Math.sin(t * 0.4 + phaseSeed) * 0.008;
+
+    // Bobbing vertical + tangage selon la vitesse verticale
+    targetY.current += Math.sin(t * 0.6 + swimPhase.current) * 0.004;
     targetY.current = Math.max(-halfH + 0.3, Math.min(halfH - 0.3, targetY.current));
+    const vy = (targetY.current - prevY.current) / Math.max(dt, 1e-3);
+    prevY.current = targetY.current;
 
-    const x = Math.sin(angle.current) * halfW;
-    const z = Math.cos(angle.current * 1.3) * halfD;
+    // Trajectoire Lissajous propre au poisson (fréquences variées)
+    const x = Math.sin(angle.current) * halfW * 0.9;
+    const z = Math.cos(angle.current * zFreq) * halfD * 0.92;
     const y = targetY.current;
 
     groupRef.current.position.set(
@@ -105,34 +178,38 @@ export function Fish({ modelType, position: initialPos, tankSize, scale, isSelec
 
     // Flip horizontal selon la direction de nage projetée sur la droite caméra
     // (sprite généré tête à gauche : on le retourne s'il nage vers la droite de l'écran).
-    dirVec.set(Math.cos(angle.current), 0, -1.3 * Math.sin(1.3 * angle.current)).normalize();
+    // Dérivée exacte de la trajectoire (x = sin·halfW·0.9, z = cos(zFreq·angle)·halfD·0.92).
+    dirVec.set(
+      Math.cos(angle.current) * halfW * 0.9,
+      0,
+      -Math.sin(angle.current * zFreq) * zFreq * halfD * 0.92,
+    ).normalize();
     rightVec.set(1, 0, 0).applyQuaternion(camera.quaternion);
     groupRef.current.scale.x = dirVec.dot(rightVec) > 0 ? -1 : 1;
 
-    // Ondulation du corps simulée (léger tilt). rotateX/rotateZ multiplient le
-    // quaternion (préserve l'orientation billboard face caméra) — alors que
-    // rotation.x/z écrasaient le quaternion copié de la caméra.
-    groupRef.current.rotateZ(Math.sin(swimPhase.current) * 0.09);
-    groupRef.current.rotateX(Math.sin(swimPhase.current * 0.7) * 0.05);
+    // Tangage (montée/descente) + léger roulis de nage. rotateX/rotateZ
+    // multiplient le quaternion (préserve l'orientation billboard).
+    groupRef.current.rotateX(THREE.MathUtils.clamp(vy * 0.3, -0.22, 0.22));
+    groupRef.current.rotateZ(Math.sin(swimPhase.current) * 0.1 * ampRef.current);
+
+    // Uniformes du shader de nage
+    const sh = material.userData.shader;
+    if (sh) {
+      sh.uniforms.uTime.value = t;
+      sh.uniforms.uW.value = w;
+      sh.uniforms.uH.value = s;
+      sh.uniforms.uAmp.value = ampRef.current;
+      sh.uniforms.uFreq.value = swimRate;
+    }
   });
 
   if (!tex) return null; // sprite pas encore chargé
 
   return (
     <group ref={groupRef} position={initialPos}>
-      <mesh
-        onClick={(e) => { e.stopPropagation(); onSelect(); }}
-        rotation={[0, 0, 0]}
-      >
-        <planeGeometry args={[w, s]} />
-        <meshStandardMaterial
-          map={tex}
-          transparent
-          alphaTest={0.08}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          roughness={0.4}
-        />
+      <mesh onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+        <planeGeometry args={[w, s, 24, 12]} />
+        <primitive object={material} attach="material" />
       </mesh>
       {isSelected && (
         <mesh position={[0, s * 0.1, 0]}>
