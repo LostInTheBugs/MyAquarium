@@ -141,7 +141,7 @@ export const FISH_ATLAS: Record<string, { url: string; frames: number }> = {
   'fish-cory': { url: asset('/textures/sprites/anim-atlas/fish-cory.webp?v=1'), frames: 33 },
   'fish-gold': { url: asset('/textures/sprites/anim-atlas/fish-gold.webp?v=1'), frames: 33 },
   'fish-tang': { url: asset('/textures/sprites/anim-atlas/fish-tang.webp?v=1'), frames: 33 },
-  'fish-butterfly': { url: asset('/textures/sprites/anim-atlas/fish-butterfly.webp?v=1'), frames: 33 },
+  'fish-butterfly': { url: asset('/textures/sprites/anim-atlas/fish-butterfly.webp?v=2'), frames: 33 },
   'fish-goby': { url: asset('/textures/sprites/anim-atlas/fish-goby.webp?v=1'), frames: 33 },
   'fish-damsel': { url: asset('/textures/sprites/anim-atlas/fish-damsel.webp?v=1'), frames: 33 },
 };
