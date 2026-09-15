@@ -71,8 +71,8 @@ export const PRESETS: Record<WaterType, AquariumPreset> = {
       { elementId: 'corydoras', position: [1.9, -2.05, -0.5], rotation: [0, 0, 0], scale: 1 },
       { elementId: 'goldfish', position: [0.3, -0.7, 1.6], rotation: [0, 0, 0], scale: 1 },
 
-      // --- Équipement ---
-      { elementId: 'air-pump', position: [-3.8, 0.5, 0], rotation: [0, 0, 0], scale: 1 },
+      // --- Équipement (posé au sol, coin arrière-gauche) ---
+      { elementId: 'air-pump', position: [-3.4, SOL, -1.5], rotation: [0, 0, 0], scale: 1 },
     ],
   },
 
@@ -123,9 +123,9 @@ export const PRESETS: Record<WaterType, AquariumPreset> = {
       { elementId: 'damselfish', position: [0.8, -0.4, -1.4], rotation: [0, 0, 0], scale: 1 },
       { elementId: 'damselfish', position: [-0.6, 0.0, 1.5], rotation: [0, 0, 0], scale: 1 },
 
-      // --- Équipement ---
-      { elementId: 'skimmer', position: [-3.8, 0.5, 0], rotation: [0, 0, 0], scale: 1 },
-      { elementId: 'air-pump', position: [3.8, 0.5, 0], rotation: [0, 0, 0], scale: 1 },
+      // --- Équipement (posé au sol, coins arrière) ---
+      { elementId: 'skimmer', position: [-3.4, SOL, -1.5], rotation: [0, 0, 0], scale: 1 },
+      { elementId: 'air-pump', position: [3.4, SOL, -1.5], rotation: [0, 0, 0], scale: 1 },
     ],
   },
 };
