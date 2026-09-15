@@ -130,16 +130,16 @@ If you add a new category, update:
 
 ## Development cost (LLM)
 
-This project was built entirely through AI-assisted sessions (Hermes Agent, deepseek-v4-pro / deepseek-v4-flash). Usage so far (cumulative as of 2026-09-14):
+This project was built entirely through AI-assisted sessions (Hermes Agent, deepseek-v4-pro / deepseek-v4-flash). Usage so far (cumulative as of 2026-09-15):
 
 | Metric | Value |
 |---|---|
-| Input tokens | 1 720 098 |
-| Output tokens | 723 406 |
-| **Total (input + output)** | **2 443 504** |
-| Cache read (reused at reduced price) | 225 383 808 |
-| API calls | 1 404 |
-| **Estimated cost** | **≈ 1.33 USD** |
+| Input tokens | 2 219 985 |
+| Output tokens | 984 084 |
+| **Total (input + output)** | **3 204 069** |
+| Cache read (reused at reduced price) | 260 366 080 |
+| API calls | 1 545 |
+| **Estimated cost** | **≈ 1.66 USD** |
 
 Full breakdown: [TOKENS.md](TOKENS.md).
 
