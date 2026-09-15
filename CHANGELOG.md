@@ -2,6 +2,24 @@
 
 All notable changes to MyAquarium are documented in this file.
 
+## [2026.09.002] — 2026-09-15
+
+### Added
+- **Real swim animation**: 10 fish species play keyed frame-strip atlases (extracted from the project's LTX video clips) through per-fish texture-offset playback (~12 fps, individual phase, slowed while idling) — fins, tail and body visibly move; the vertex-shader undulation (body S-curve + tail beat) remains as a second layer
+- Per-species heading map (`FISH_FACING`): each sprite's native orientation is declared, so fish always show their head towards their direction of travel
+- Scene dressing: dark stand under the tank, room environment (floor + rear wall, 3D view only), LED light fixture with L-brackets, water surface tint with an animated surface normal map, air tubing at the tank edge
+
+### Changed
+- Glass is now a plain transparent `meshPhysicalMaterial` — the previous `transmission` glass rendered only opaque geometry in its internal pass, hiding every alpha-tested sprite from outside the tank
+- Fish billboards flip from the exact trajectory derivative compared with the species' native sprite orientation
+- Sprite chroma-key cleanup: `plant-red`, `plant-moss` and `coral-colorful` had failed keying (opaque magenta patches, up to 16.6% of the sprite) — alpha cleaned, texture versions bumped
+- Showcase presets: the air pump and the skimmer now sit on the substrate instead of floating mid-water
+
+### Fixed
+- All tank life (fish, plants, corals, bubbles, particles) was invisible from outside the glass — the root cause of the earlier "empty tank" reports
+- Fish swam tail-first: the flip logic assumed every sprite faces left, but sprites have mixed orientations
+- Fish positions became `NaN` for element UUIDs starting with a letter (parsed from the UUID slice) — replaced by a stable per-fish random phase
+
 ## [2026.09.001] — 2026-09-14
 
 ### Added

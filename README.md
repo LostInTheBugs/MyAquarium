@@ -2,7 +2,7 @@
 
 Immersive web application to create and customize a realistic 3D aquarium in the browser. Choose fresh or salt water, stock your tank with fish, plants and decorations, then interact in real time with the Three.js scene.
 
-Current version: **2026.09.001** — [See releases](https://github.com/LostInTheBugs/MyAquarium/releases)
+Current version: **2026.09.002** — [See releases](https://github.com/LostInTheBugs/MyAquarium/releases)
 
 ## 🚀 Installation
 
@@ -60,13 +60,15 @@ src/
     ├── ConfigScreen.tsx              # Home screen — water type, size, showcases
     ├── DiscoverScreen.tsx            # Discover pages — tiles + info modals
     ├── AquariumScene.tsx             # Main 3D scene (Three.js) + 2D/3D camera rig
+    ├── TankStand.tsx                 # Dark stand under the tank
+    ├── RoomEnvironment.tsx           # Room floor + rear wall (3D view only)
     ├── CustomizationPanel.tsx        # Side customization panel
     ├── InfoPanel.tsx                 # Info panel and object control
     ├── GlassTank.tsx                 # 3D glass tank
     ├── SandFloor.tsx                 # Floor / substrate
     ├── Billboard.tsx                 # Crossed textured planes (sprites)
     ├── textures.ts                   # Texture/sprite URL maps + safe loader
-    ├── Fish.tsx                      # Camera-facing sprite fish
+    ├── Fish.tsx                      # Camera-facing sprite fish with animated swim frames
     ├── Plant.tsx / PlantTypes.ts     # Plants (sprites) + shared prop types
     ├── Coral.tsx / CoralTypes.ts     # Corals & invertebrates (sprites) + shared prop types
     ├── Decoration.tsx                # Decorations (castle, wreck, etc.)
@@ -75,7 +77,7 @@ src/
     └── ParticleSystem.tsx            # Suspended particles
 ```
 
-Textures and sprites live in `public/textures/` (substrate/ , background/ , sprites/ , sprites/anim/).
+Textures and sprites live in `public/textures/` (substrate/ , background/ , sprites/ , sprites/anim/ , sprites/anim-atlas/).
 
 ## 🎮 Features
 
